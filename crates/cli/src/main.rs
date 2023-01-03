@@ -134,7 +134,9 @@ fn main() -> Result<()> {
     if let Some(out_dir) = matches.value_of("rust-out") {
         log.start("Rust", out_dir);
 
-        let target = jtd_codegen_target_rust::Target::new();
+        let extra_derives = matches.value_of("rust-derive").unwrap_or_default().to_owned();
+
+        let target = jtd_codegen_target_rust::Target::new(&extra_derives);
 
         let codegen_info =
             jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
