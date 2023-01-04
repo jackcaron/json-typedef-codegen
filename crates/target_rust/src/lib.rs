@@ -394,7 +394,7 @@ fn enum_variant_description(
 
 fn doc(ident: usize, s: &str) -> String {
     let prefix = "    ".repeat(ident);
-    jtd_codegen::target::fmt::comment_block("", &format!("{}///", prefix), "", s)
+    jtd_codegen::target::fmt::comment_block("", &format!("{}/// ", prefix), "", s)
 }
 
 #[cfg(test)]
