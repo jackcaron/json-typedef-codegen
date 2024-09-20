@@ -111,6 +111,13 @@ args:
       requires:
         - rust-out
 
+  # C++
+  - cpp-out:
+      help: Output directory for C++ code generation
+      long: cpp-out
+      takes_value: true
+      value_name: dir
+
   # TypeScript
   - typescript-out:
       help: Output directory for TypeScript code generation

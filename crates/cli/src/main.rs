@@ -1,6 +1,6 @@
 mod root_name;
 
-use anyhow::{format_err, Context, Result};
+use anyhow::{anyhow, format_err, Context, Result};
 use clap::{crate_version, load_yaml, App};
 use jtd::{Schema, SerdeSchema};
 use serde::Serialize;
@@ -145,6 +145,10 @@ fn main() -> Result<()> {
         log.finish("Rust", &codegen_info);
     }
 
+    if let Some(out_dir) = matches.value_of("cpp-out") {
+        return Err(anyhow!("C++ not implemented yet"));
+    }
+
     if let Some(out_dir) = matches.value_of("typescript-out") {
         log.start("TypeScript", out_dir);
 
@@ -237,7 +241,7 @@ impl Log for JsonLog {
     }
 
     fn finish(&mut self, target: &str, info: &jtd_codegen::codegen::CodegenInfo) {
-        let mut entry = self.0.get_mut(target).unwrap();
+        let entry = self.0.get_mut(target).unwrap();
 
         entry.root_name = info.root_name.clone();
         entry.definition_names = info.definition_names.clone();
