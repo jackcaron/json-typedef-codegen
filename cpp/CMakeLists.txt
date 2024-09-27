@@ -27,7 +27,7 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 # find files
 include_directories("${CMAKE_SOURCE_DIR}/include")
 file(GLOB_RECURSE INC_HPP "include/*.hpp")
-file(GLOB_RECURSE CPPSRC "src/*.cpp")
+file(GLOB_RECURSE CPPSRC "src/*.cpp" "src/*.hpp")
 
 # reader library options
 # building for rapidjson, smidjson, and NAPI
