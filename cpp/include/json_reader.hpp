@@ -1,74 +1,155 @@
 #pragma once
 
 #include <cstdint>
-#include <expected>
+#include <iterator>
 #include <memory>
-#include <string>
+#include <utility>
 
-namespace JsonTypedefCodeGen {
+#include "common.hpp"
 
-// probably not the best place
-enum class JsonTypes {
-  Null,
-  Bool,
-  Number,
-  Array,
-  Object,
-  String
-};
+namespace JsonTypedefCodeGen::Reader {
 
-// place holder
-class JsonError {};
+  class JsonArray;
+  class JsonObject;
+  class JsonValue;
 
-template <typename Type> using ExpType = std::expected<Type, JsonError>;
+  class JsonArrayIterator;
+  class JsonObjectIterator;
+  using ObjectIteratorPair = std::pair<std::string, JsonValue>;
 
-class JsonArray;
-class JsonObject;
-class JsonValue;
-using JsonArrayPtr = std::unique_ptr<JsonArray>;
-using JsonObjectPtr = std::unique_ptr<JsonObject>;
-using JsonValuePtr = std::unique_ptr<JsonValue>;
+  namespace Specialization {
 
-class JsonArray {
-public:
-  virtual ~JsonArray() {}
+    class ArrayIterator;
+    using ArrayIteratorPtr = std::unique_ptr<ArrayIterator>;
 
-  // for "simdjson::ondemand", data doesn't persist and must be consumed when
-  // given
-  virtual bool must_use_iterators() = 0;
+    class ObjectIterator;
+    using ObjectIteratorPtr = std::unique_ptr<ObjectIterator>;
 
-  virtual ExpType<uint32_t> get_size() = 0;
-  virtual ExpType<JsonValuePtr> get_element(const uint32_t idx) = 0;
-  // iterators
-};
+    class Array;
+    using ArrayPtr = std::unique_ptr<Array>;
 
-class JsonObject {
-public:
-  virtual ~JsonObject() {}
+    class Object;
+    using ObjectPtr = std::unique_ptr<Object>;
 
-  // for "simdjson::ondemand", data doesn't persist and must be consumed when
-  // given
-  virtual bool must_use_iterators() = 0;
+    class Value;
+    using ValuePtr = std::unique_ptr<Value>;
 
-  //
-  // get
-  // iterators
-};
+  } // namespace Specialization
 
-class JsonValue {
-public:
-  virtual ~JsonValue() {}
+  class JsonArrayIterator : public std::input_iterator_tag {
+  private:
+    Specialization::ArrayIteratorPtr m_pimpl;
 
-  virtual JsonTypes get_type() = 0;
+  public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = ExpType<JsonValue>;
 
-  virtual ExpType<bool> is_null() = 0;
-  virtual ExpType<bool> read_bool() = 0;
-  virtual ExpType<double> read_double() = 0;
-  virtual ExpType<uint32_t> read_u32() = 0;
-  virtual ExpType<int32_t> read_i32() = 0;
-  virtual ExpType<std::string> read_str() = 0;
-  virtual ExpType<JsonArrayPtr> read_array() = 0;
-  virtual ExpType<JsonObjectPtr> read_object() = 0;
-};
+    JsonArrayIterator() = default;
+    JsonArrayIterator(const JsonArrayIterator&) = delete;
+    JsonArrayIterator(JsonArrayIterator&&) = default;
+    JsonArrayIterator(Specialization::ArrayIteratorPtr&& pimpl);
+    ~JsonArrayIterator();
 
-} // namespace JsonTypedefCodeGen
+    JsonArrayIterator& operator=(const JsonArrayIterator&) = delete;
+    JsonArrayIterator& operator=(JsonArrayIterator&&) = default;
+
+    value_type operator*() const;
+    JsonArrayIterator& operator++();
+    inline void operator++(int) { ++(*this); }
+
+    bool operator==(const JsonArrayIterator& rhs) const;
+    inline bool operator!=(const JsonArrayIterator& rhs) const {
+      return !((*this) == rhs);
+    }
+  };
+
+  class JsonObjectIterator : public std::input_iterator_tag {
+  private:
+    Specialization::ObjectIteratorPtr m_pimpl;
+
+  public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = ExpType<ObjectIteratorPair>;
+
+    JsonObjectIterator() = default;
+    JsonObjectIterator(const JsonObjectIterator&) = delete;
+    JsonObjectIterator(JsonObjectIterator&&) = default;
+    JsonObjectIterator(Specialization::ObjectIteratorPtr&& pimpl);
+    ~JsonObjectIterator();
+
+    JsonObjectIterator& operator=(const JsonObjectIterator&) = delete;
+    JsonObjectIterator& operator=(JsonObjectIterator&&) = default;
+
+    value_type operator*() const;
+    JsonObjectIterator& operator++();
+    inline void operator++(int) { ++(*this); }
+
+    bool operator==(const JsonObjectIterator& rhs) const;
+    inline bool operator!=(const JsonObjectIterator& rhs) const {
+      return !((*this) == rhs);
+    }
+  };
+
+  class JsonArray {
+  private:
+    Specialization::ArrayPtr m_pimpl;
+
+  public:
+    JsonArray() = default;
+    JsonArray(const JsonArray&) = delete;
+    JsonArray(JsonArray&&) = default;
+    JsonArray(Specialization::ArrayPtr&& pimpl);
+    virtual ~JsonArray();
+
+    JsonArray& operator=(const JsonArray&) = delete;
+    JsonArray& operator=(JsonArray&&) = default;
+
+    JsonArrayIterator begin() const;
+    JsonArrayIterator end() const;
+  };
+
+  class JsonObject {
+  private:
+    Specialization::ObjectPtr m_pimpl;
+
+  public:
+    JsonObject() = default;
+    JsonObject(const JsonObject&) = delete;
+    JsonObject(JsonObject&&) = default;
+    JsonObject(Specialization::ObjectPtr&& pimpl);
+    virtual ~JsonObject();
+
+    JsonObject& operator=(const JsonObject&) = delete;
+    JsonObject& operator=(JsonObject&&) = default;
+
+    JsonObjectIterator begin() const;
+    JsonObjectIterator end() const;
+  };
+
+  class JsonValue {
+  private:
+    Specialization::ValuePtr m_pimpl;
+
+  public:
+    JsonValue() = default;
+    JsonValue(const JsonValue&) = delete;
+    JsonValue(JsonValue&&) = default;
+    JsonValue(Specialization::ValuePtr&& pimpl);
+    virtual ~JsonValue();
+
+    JsonValue& operator=(const JsonValue&) = delete;
+    JsonValue& operator=(JsonValue&&) = default;
+
+    JsonTypes get_type() const;
+
+    ExpType<bool> is_null() const;
+    ExpType<bool> read_bool() const;
+    ExpType<double> read_double() const;
+    ExpType<uint32_t> read_u32() const;
+    ExpType<int32_t> read_i32() const;
+    ExpType<std::string> read_str() const;
+    ExpType<JsonArray> read_array() const;
+    ExpType<JsonObject> read_object() const;
+  };
+
+} // namespace JsonTypedefCodeGen::Reader
