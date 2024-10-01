@@ -97,8 +97,7 @@ namespace JsonTypedefCodeGen::Reader {
 
   //    -   -   -   -   -   -   -   -   -   -
   static UnexpJsonError noPimpl() {
-    return makeJsonError(JsonErrorTypes::Invalid,
-                         "no private implementation"sv);
+    return makeJsonError(JsonErrorTypes::Invalid, "invalid/empty JsonValue"sv);
   }
 
   JsonValue::JsonValue(Specialization::ValuePtr&& pimpl)
