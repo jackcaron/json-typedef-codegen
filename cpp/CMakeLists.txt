@@ -8,7 +8,9 @@ option(ENABLE_RAPID_JSON "add Rapid JSON wrapper" OFF)
 option(ENABLE_NAPI "add Node.js' NAPI wrapper" OFF)
 option(BUILD_READER "build the reader wrappers" ON)
 option(BUILD_WRITER "build the reader wrappers" OFF)
+option(BUILD_TEST "build the tests" ON)
 
+# option checks
 if ((NOT BUILD_READER) AND (NOT BUILD_WRITER))
   message(FATAL_ERROR "option BUILD_READER or BUILD_WRITER must be set")
 endif()
@@ -19,6 +21,20 @@ endif()
 
 if (ENABLE_SIMD_JSON AND (NOT BUILD_READER))
   message(FATAL_ERROR "SIMD JSON wrapper can only be built if reader wrappers are built")
+endif()
+
+if (BUILD_READER)
+  if (ENABLE_RAPID_JSON)
+    message(FATAL_ERROR "option ENABLE_RAPID_JSON not supported yet")
+  endif()
+
+  if (ENABLE_NAPI)
+    message(FATAL_ERROR "option ENABLE_NAPI not supported yet")
+  endif()
+endif()
+
+if (BUILD_WRITER)
+  message(FATAL_ERROR "option BUILD_WRITER not supported yet")
 endif()
 
 # C/C++
@@ -49,16 +65,28 @@ file(GLOB INC_HPP "include/*.hpp")
 file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
 
 # reader library options
-if (ENABLE_SIMD_JSON)
-  file(GLOB SIMDJSONEXT "external/simd_json/simdjson.*")
-  file(GLOB_RECURSE SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
-  set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
+if (BUILD_READER)
+
+  if (ENABLE_SIMD_JSON)
+    file(GLOB SIMDJSONEXT "external/simd_json/simdjson.*")
+    file(GLOB_RECURSE SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
+    set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
+  endif()
+
+  if (ENABLE_RAPID_JSON)
+    # LATER
+  endif()
+
+  if (ENABLE_NAPI)
+    # LATER
+  endif()
+
 endif()
 
-# building for rapidjson, smidjson, and NAPI
-# could generate a header file to match the configuration
-
 # writer library options
+if (BUILD_WRITER)
+  # LATER
+endif()
 
 # static/shared library
 add_library(json_wrapper_obj OBJECT ${INC_HPP} ${CPPSRC})
@@ -66,6 +94,9 @@ add_library(json_wrapper_static STATIC $<TARGET_OBJECTS:json_wrapper_obj>)
 add_library(json_wrapper SHARED $<TARGET_OBJECTS:json_wrapper_obj>)
 
 # tests
-file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
-add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
-target_link_libraries(json_wrapper_tests json_wrapper_static)
+if (BUILD_TEST)
+  # add test options based on the build options
+  file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
+  add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
+  target_link_libraries(json_wrapper_tests json_wrapper_static)
+endif()

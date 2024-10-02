@@ -1,6 +1,6 @@
 #include "json_writer.hpp"
 
-namespace JsonTypedefCodeGen {
+namespace JsonTypedefCodeGen::Writer {
 
   //
 

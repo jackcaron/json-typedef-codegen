@@ -2,7 +2,7 @@
 
 #include "common.hpp"
 
-namespace JsonTypedefCodeGen {
+namespace JsonTypedefCodeGen::Writer {
 
   //
 
