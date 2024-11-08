@@ -5,41 +5,39 @@
 // internal specialization for each library
 namespace JsonTypedefCodeGen::Reader::Specialization {
 
-  class ArrayIterator {
+  class ArrayIterator : public BaseArrayIterator {
   public:
     virtual ~ArrayIterator();
 
     virtual ExpType<JsonValue> get() const = 0;
     virtual void next() = 0;
-    virtual bool identical(const ArrayIterator* rhs = nullptr) const = 0;
+    virtual bool empty() const = 0;
   };
 
-  class ObjectIterator {
+  class ObjectIterator : public BaseObjectIterator {
   public:
     virtual ~ObjectIterator();
 
     virtual ExpType<ObjectIteratorPair> get() const = 0;
     virtual void next() = 0;
-    virtual bool identical(const ObjectIterator* rhs = nullptr) const = 0;
+    virtual bool empty() const = 0;
   };
 
-  class Array {
+  class Array : public BaseArray {
   public:
     virtual ~Array();
 
     virtual JsonArrayIterator begin() const = 0;
-    virtual JsonArrayIterator end() const = 0;
   };
 
-  class Object {
+  class Object : public BaseObject {
   public:
     virtual ~Object();
 
     virtual JsonObjectIterator begin() const = 0;
-    virtual JsonObjectIterator end() const = 0;
   };
 
-  class Value {
+  class Value : public BaseValue {
   public:
     virtual ~Value();
 

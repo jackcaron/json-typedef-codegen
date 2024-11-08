@@ -9,36 +9,79 @@
 
 namespace JsonTypedefCodeGen::Reader {
 
+  class JsonArrayIterator;
+  class JsonObjectIterator;
   class JsonArray;
   class JsonObject;
   class JsonValue;
 
-  class JsonArrayIterator;
-  class JsonObjectIterator;
-  using ObjectIteratorPair = std::pair<std::string, JsonValue>;
-
   namespace Specialization {
 
-    class ArrayIterator;
-    using ArrayIteratorPtr = std::unique_ptr<ArrayIterator>;
+    class BaseArrayIterator;
+    using ArrayIteratorPtr = std::unique_ptr<BaseArrayIterator>;
 
-    class ObjectIterator;
-    using ObjectIteratorPtr = std::unique_ptr<ObjectIterator>;
+    class BaseObjectIterator;
+    using ObjectIteratorPtr = std::unique_ptr<BaseObjectIterator>;
 
-    class Array;
-    using ArrayPtr = std::unique_ptr<Array>;
+    class BaseArray;
+    using ArrayPtr = std::unique_ptr<BaseArray>;
 
-    class Object;
-    using ObjectPtr = std::unique_ptr<Object>;
+    class BaseObject;
+    using ObjectPtr = std::unique_ptr<BaseObject>;
 
-    class Value;
-    using ValuePtr = std::unique_ptr<Value>;
+    class BaseValue;
+    using ValuePtr = std::unique_ptr<BaseValue>;
+
+    class BaseArrayIterator {
+    protected:
+      static JsonArrayIterator create_json(ArrayIteratorPtr&& pimpl);
+
+    public:
+      virtual ~BaseArrayIterator();
+    };
+
+    class BaseObjectIterator {
+    protected:
+      static JsonObjectIterator create_json(ObjectIteratorPtr&& pimpl);
+
+    public:
+      virtual ~BaseObjectIterator();
+    };
+
+    class BaseArray {
+    protected:
+      static JsonArray create_json(ArrayPtr&& pimpl);
+
+    public:
+      virtual ~BaseArray();
+    };
+
+    class BaseObject {
+    protected:
+      static JsonObject create_json(ObjectPtr&& pimpl);
+
+    public:
+      virtual ~BaseObject();
+    };
+
+    class BaseValue {
+    protected:
+      static JsonValue create_json(ValuePtr&& pimpl);
+
+    public:
+      virtual ~BaseValue();
+    };
 
   } // namespace Specialization
 
+  using ObjectIteratorPair = std::pair<std::string, JsonValue>;
+
   class JsonArrayIterator : public std::input_iterator_tag {
   private:
+    friend class Specialization::BaseArrayIterator;
+
     Specialization::ArrayIteratorPtr m_pimpl;
+    JsonArrayIterator(Specialization::ArrayIteratorPtr&& pimpl);
 
   public:
     using difference_type = std::ptrdiff_t;
@@ -47,8 +90,7 @@ namespace JsonTypedefCodeGen::Reader {
     JsonArrayIterator() = default;
     JsonArrayIterator(const JsonArrayIterator&) = delete;
     JsonArrayIterator(JsonArrayIterator&&) = default;
-    JsonArrayIterator(Specialization::ArrayIteratorPtr&& pimpl);
-    ~JsonArrayIterator();
+    ~JsonArrayIterator() {}
 
     JsonArrayIterator& operator=(const JsonArrayIterator&) = delete;
     JsonArrayIterator& operator=(JsonArrayIterator&&) = default;
@@ -57,15 +99,15 @@ namespace JsonTypedefCodeGen::Reader {
     JsonArrayIterator& operator++();
     inline void operator++(int) { ++(*this); }
 
-    bool operator==(const JsonArrayIterator& rhs) const;
-    inline bool operator!=(const JsonArrayIterator& rhs) const {
-      return !((*this) == rhs);
-    }
+    bool operator==(std::default_sentinel_t) const;
   };
 
   class JsonObjectIterator : public std::input_iterator_tag {
   private:
+    friend class Specialization::BaseObjectIterator;
+
     Specialization::ObjectIteratorPtr m_pimpl;
+    JsonObjectIterator(Specialization::ObjectIteratorPtr&& pimpl);
 
   public:
     using difference_type = std::ptrdiff_t;
@@ -74,8 +116,7 @@ namespace JsonTypedefCodeGen::Reader {
     JsonObjectIterator() = default;
     JsonObjectIterator(const JsonObjectIterator&) = delete;
     JsonObjectIterator(JsonObjectIterator&&) = default;
-    JsonObjectIterator(Specialization::ObjectIteratorPtr&& pimpl);
-    ~JsonObjectIterator();
+    ~JsonObjectIterator() {}
 
     JsonObjectIterator& operator=(const JsonObjectIterator&) = delete;
     JsonObjectIterator& operator=(JsonObjectIterator&&) = default;
@@ -84,58 +125,65 @@ namespace JsonTypedefCodeGen::Reader {
     JsonObjectIterator& operator++();
     inline void operator++(int) { ++(*this); }
 
-    bool operator==(const JsonObjectIterator& rhs) const;
-    inline bool operator!=(const JsonObjectIterator& rhs) const {
-      return !((*this) == rhs);
-    }
+    bool operator==(std::default_sentinel_t) const;
   };
 
   class JsonArray {
   private:
+    friend class Specialization::BaseArray;
+
     Specialization::ArrayPtr m_pimpl;
+    JsonArray(Specialization::ArrayPtr&& pimpl);
 
   public:
     JsonArray() = default;
     JsonArray(const JsonArray&) = delete;
     JsonArray(JsonArray&&) = default;
-    JsonArray(Specialization::ArrayPtr&& pimpl);
-    virtual ~JsonArray();
+    ~JsonArray() {}
 
     JsonArray& operator=(const JsonArray&) = delete;
     JsonArray& operator=(JsonArray&&) = default;
 
     JsonArrayIterator begin() const;
-    JsonArrayIterator end() const;
+    inline std::default_sentinel_t end() const {
+      return std::default_sentinel_t{};
+    }
   };
 
   class JsonObject {
   private:
+    friend class Specialization::BaseObject;
+
     Specialization::ObjectPtr m_pimpl;
+    JsonObject(Specialization::ObjectPtr&& pimpl);
 
   public:
     JsonObject() = default;
     JsonObject(const JsonObject&) = delete;
     JsonObject(JsonObject&&) = default;
-    JsonObject(Specialization::ObjectPtr&& pimpl);
-    virtual ~JsonObject();
+    ~JsonObject() {}
 
     JsonObject& operator=(const JsonObject&) = delete;
     JsonObject& operator=(JsonObject&&) = default;
 
     JsonObjectIterator begin() const;
-    JsonObjectIterator end() const;
+    inline std::default_sentinel_t end() const {
+      return std::default_sentinel_t{};
+    }
   };
 
   class JsonValue {
   private:
+    friend class Specialization::BaseValue;
+
     Specialization::ValuePtr m_pimpl;
+    JsonValue(Specialization::ValuePtr&& pimpl);
 
   public:
     JsonValue() = default;
     JsonValue(const JsonValue&) = delete;
     JsonValue(JsonValue&&) = default;
-    JsonValue(Specialization::ValuePtr&& pimpl);
-    virtual ~JsonValue();
+    ~JsonValue() {}
 
     JsonValue& operator=(const JsonValue&) = delete;
     JsonValue& operator=(JsonValue&&) = default;
