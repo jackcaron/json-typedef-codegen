@@ -1,4 +1,5 @@
 #include "json_reader.hpp"
+#include "internal.hpp"
 #include "spec_reader.hpp"
 
 namespace JsonTypedefCodeGen::Reader {
@@ -13,9 +14,6 @@ namespace JsonTypedefCodeGen::Reader {
     JsonArrayIterator BaseArrayIterator::create_json(ArrayIteratorPtr&& pimpl) {
       return JsonArrayIterator(std::move(pimpl));
     }
-    constexpr auto unbase(const std::unique_ptr<BaseArrayIterator>& base) {
-      return dynamic_cast<ArrayIterator*>(base.get());
-    }
 
     // - - -
     BaseObjectIterator::~BaseObjectIterator() {}
@@ -24,18 +22,12 @@ namespace JsonTypedefCodeGen::Reader {
     BaseObjectIterator::create_json(ObjectIteratorPtr&& pimpl) {
       return JsonObjectIterator(std::move(pimpl));
     }
-    constexpr auto unbase(const std::unique_ptr<BaseObjectIterator>& base) {
-      return dynamic_cast<ObjectIterator*>(base.get());
-    }
 
     // - - -
     BaseArray::~BaseArray() {}
     Array::~Array() {}
     JsonArray BaseArray::create_json(ArrayPtr&& pimpl) {
       return JsonArray(std::move(pimpl));
-    }
-    constexpr auto unbase(const std::unique_ptr<BaseArray>& base) {
-      return dynamic_cast<Array*>(base.get());
     }
 
     // - - -
@@ -44,9 +36,6 @@ namespace JsonTypedefCodeGen::Reader {
     JsonObject BaseObject::create_json(ObjectPtr&& pimpl) {
       return JsonObject(std::move(pimpl));
     }
-    constexpr auto unbase(const std::unique_ptr<BaseObject>& base) {
-      return dynamic_cast<Object*>(base.get());
-    }
 
     // - - -
     BaseValue::~BaseValue() {}
@@ -54,8 +43,26 @@ namespace JsonTypedefCodeGen::Reader {
     JsonValue BaseValue::create_json(ValuePtr&& pimpl) {
       return JsonValue(std::move(pimpl));
     }
-    constexpr auto unbase(const std::unique_ptr<BaseValue>& base) {
-      return dynamic_cast<Value*>(base.get());
+
+    // - - -
+    template <typename Base> struct Unbase;
+    template <> struct Unbase<BaseArrayIterator> {
+      using type = ArrayIterator;
+    };
+    template <> struct Unbase<BaseObjectIterator> {
+      using type = ObjectIterator;
+    };
+    template <> struct Unbase<BaseArray> { using type = Array; };
+    template <> struct Unbase<BaseObject> { using type = Object; };
+    template <> struct Unbase<BaseValue> { using type = Value; };
+
+    template <typename Base, typename UnbaseT = Unbase<Base>::type>
+    constexpr const UnbaseT* unbase(const std::unique_ptr<Base>& base) {
+      return dynamic_cast<const UnbaseT*>(base.get());
+    }
+    template <typename Base, typename UnbaseT = Unbase<Base>::type>
+    constexpr UnbaseT* unbase(std::unique_ptr<Base>& base) {
+      return dynamic_cast<UnbaseT*>(base.get());
     }
 
   } // namespace Specialization
@@ -68,22 +75,23 @@ namespace JsonTypedefCodeGen::Reader {
   JsonArrayIterator::JsonArrayIterator(Spec::ArrayIteratorPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
-  JsonArrayIterator::value_type JsonArrayIterator::operator*() const {
+  DLL_PUBLIC JsonArrayIterator::value_type
+  JsonArrayIterator::operator*() const {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
     return makeJsonError(JsonErrorTypes::Invalid, "end iterator"sv);
   }
 
-  JsonArrayIterator& JsonArrayIterator::operator++() {
+  DLL_PUBLIC JsonArrayIterator& JsonArrayIterator::operator++() {
     if (m_pimpl) {
       Spec::unbase(m_pimpl)->next();
     }
     return *this;
   }
 
-  bool JsonArrayIterator::operator==(std::default_sentinel_t) const {
-    return !m_pimpl || Spec::unbase(m_pimpl)->empty();
+  DLL_PUBLIC bool JsonArrayIterator::operator==(std::default_sentinel_t) const {
+    return !m_pimpl || Spec::unbase(m_pimpl)->done();
   }
 
   // ------------------------------------------
@@ -91,36 +99,38 @@ namespace JsonTypedefCodeGen::Reader {
   JsonObjectIterator::JsonObjectIterator(Spec::ObjectIteratorPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
-  JsonObjectIterator::value_type JsonObjectIterator::operator*() const {
+  DLL_PUBLIC JsonObjectIterator::value_type
+  JsonObjectIterator::operator*() const {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
     return makeJsonError(JsonErrorTypes::Invalid, "end iterator"sv);
   }
 
-  JsonObjectIterator& JsonObjectIterator::operator++() {
+  DLL_PUBLIC JsonObjectIterator& JsonObjectIterator::operator++() {
     if (m_pimpl) {
       Spec::unbase(m_pimpl)->next();
     }
     return *this;
   }
 
-  bool JsonObjectIterator::operator==(std::default_sentinel_t) const {
-    return !m_pimpl || Spec::unbase(m_pimpl)->empty();
+  DLL_PUBLIC bool
+  JsonObjectIterator::operator==(std::default_sentinel_t) const {
+    return !m_pimpl || Spec::unbase(m_pimpl)->done();
   }
 
   // ------------------------------------------
 
   JsonArray::JsonArray(Spec::ArrayPtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
-  JsonArrayIterator JsonArray::begin() const {
+  DLL_PUBLIC JsonArrayIterator JsonArray::begin() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonArrayIterator();
   }
 
   //    -   -   -   -   -   -   -   -   -   -
   JsonObject::JsonObject(Spec::ObjectPtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
-  JsonObjectIterator JsonObject::begin() const {
+  DLL_PUBLIC JsonObjectIterator JsonObject::begin() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonObjectIterator();
   }
 
@@ -131,32 +141,32 @@ namespace JsonTypedefCodeGen::Reader {
 
   JsonValue::JsonValue(Spec::ValuePtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
-  JsonTypes JsonValue::get_type() const {
+  DLL_PUBLIC JsonTypes JsonValue::get_type() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->get_type() : JsonTypes::Invalid;
   }
 
-  ExpType<bool> JsonValue::is_null() const {
+  DLL_PUBLIC ExpType<bool> JsonValue::is_null() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->is_null() : noPimpl();
   }
-  ExpType<bool> JsonValue::read_bool() const {
+  DLL_PUBLIC ExpType<bool> JsonValue::read_bool() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_bool() : noPimpl();
   }
-  ExpType<double> JsonValue::read_double() const {
+  DLL_PUBLIC ExpType<double> JsonValue::read_double() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_double() : noPimpl();
   }
-  ExpType<uint32_t> JsonValue::read_u32() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_u32() : noPimpl();
+  DLL_PUBLIC ExpType<uint64_t> JsonValue::read_u64() const {
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_u64() : noPimpl();
   }
-  ExpType<int32_t> JsonValue::read_i32() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_i32() : noPimpl();
+  DLL_PUBLIC ExpType<int64_t> JsonValue::read_i64() const {
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_i64() : noPimpl();
   }
-  ExpType<std::string> JsonValue::read_str() const {
+  DLL_PUBLIC ExpType<std::string> JsonValue::read_str() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_str() : noPimpl();
   }
-  ExpType<JsonArray> JsonValue::read_array() const {
+  DLL_PUBLIC ExpType<JsonArray> JsonValue::read_array() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_array() : noPimpl();
   }
-  ExpType<JsonObject> JsonValue::read_object() const {
+  DLL_PUBLIC ExpType<JsonObject> JsonValue::read_object() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_object() : noPimpl();
   }
 

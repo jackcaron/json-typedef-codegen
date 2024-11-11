@@ -1,5 +1,5 @@
 # compilation
-build/*
+build*/*
 lib/*
 bin/*
 

@@ -36,25 +36,31 @@ namespace JsonTypedefCodeGen {
     const std::string message;
 
     JsonError() = delete;
-    JsonError(const JsonErrorTypes t) : type(t), message() {}
-    JsonError(const JsonErrorTypes t, const std::string_view msg)
+    constexpr JsonError(const JsonError&) = default;
+    constexpr JsonError(JsonError&&) = default;
+    constexpr JsonError(const JsonErrorTypes t = JsonErrorTypes::Unknown)
+        : type(t), message() {}
+    constexpr JsonError(const JsonErrorTypes t, const std::string_view msg)
         : type(t), message(msg) {}
-    JsonError(const JsonErrorTypes t, const std::string& msg)
+    constexpr JsonError(const JsonErrorTypes t, const std::string& msg)
         : type(t), message(msg) {}
+
+    constexpr JsonError& operator=(const JsonError&) = default;
+    constexpr JsonError& operator=(JsonError&&) = default;
   };
 
   template <typename Type> using ExpType = std::expected<Type, JsonError>;
   using UnexpJsonError = std::unexpected<JsonError>;
 
-  inline UnexpJsonError makeJsonError(const JsonErrorTypes type) {
+  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type) {
     return UnexpJsonError(std::in_place_t{}, type);
   }
-  inline UnexpJsonError makeJsonError(const JsonErrorTypes type,
-                                      const std::string_view message) {
+  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type,
+                                         const std::string_view message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
-  inline UnexpJsonError makeJsonError(const JsonErrorTypes type,
-                                      const std::string& message) {
+  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type,
+                                         const std::string& message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
 

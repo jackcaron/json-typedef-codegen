@@ -11,7 +11,7 @@ namespace JsonTypedefCodeGen::Reader::Specialization {
 
     virtual ExpType<JsonValue> get() const = 0;
     virtual void next() = 0;
-    virtual bool empty() const = 0;
+    virtual bool done() const = 0;
   };
 
   class ObjectIterator : public BaseObjectIterator {
@@ -20,7 +20,7 @@ namespace JsonTypedefCodeGen::Reader::Specialization {
 
     virtual ExpType<ObjectIteratorPair> get() const = 0;
     virtual void next() = 0;
-    virtual bool empty() const = 0;
+    virtual bool done() const = 0;
   };
 
   class Array : public BaseArray {
@@ -46,8 +46,8 @@ namespace JsonTypedefCodeGen::Reader::Specialization {
     virtual ExpType<bool> is_null() const = 0;
     virtual ExpType<bool> read_bool() const = 0;
     virtual ExpType<double> read_double() const = 0;
-    virtual ExpType<uint32_t> read_u32() const = 0;
-    virtual ExpType<int32_t> read_i32() const = 0;
+    virtual ExpType<uint64_t> read_u64() const = 0;
+    virtual ExpType<int64_t> read_i64() const = 0;
     virtual ExpType<std::string> read_str() const = 0;
     virtual ExpType<JsonArray> read_array() const = 0;
     virtual ExpType<JsonObject> read_object() const = 0;

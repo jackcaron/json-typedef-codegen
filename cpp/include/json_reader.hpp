@@ -7,6 +7,10 @@
 
 #include "common.hpp"
 
+#ifdef USE_SIMD
+#include "simd_json/simdjson.h"
+#endif
+
 namespace JsonTypedefCodeGen::Reader {
 
   class JsonArrayIterator;
@@ -193,15 +197,15 @@ namespace JsonTypedefCodeGen::Reader {
     ExpType<bool> is_null() const;
     ExpType<bool> read_bool() const;
     ExpType<double> read_double() const;
-    ExpType<uint32_t> read_u32() const;
-    ExpType<int32_t> read_i32() const;
+    ExpType<uint64_t> read_u64() const;
+    ExpType<int64_t> read_i64() const;
     ExpType<std::string> read_str() const;
     ExpType<JsonArray> read_array() const;
     ExpType<JsonObject> read_object() const;
   };
 
-#ifdef SIMDJSON_H
-  JsonValue simdjson_root_value(simdjson::ondemand::value& root);
+#ifdef USE_SIMD
+  ExpType<JsonValue> simdjson_root_value(simdjson::ondemand::value& root);
 #endif
 
 } // namespace JsonTypedefCodeGen::Reader
