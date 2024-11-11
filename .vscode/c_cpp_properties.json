@@ -3,7 +3,7 @@
     {
       "name": "Linux",
       "includePath": ["${workspaceFolder}/cpp/**"],
-      "defines": [],
+      "defines": ["USE_SIMD"],
       "compilerPath": "/usr/bin/gcc-12",
       "cStandard": "c23",
       "cppStandard": "c++23",
