@@ -2,11 +2,11 @@
 
 #include "../internal.hpp"
 #include "array.hpp"
+#include "object.hpp"
 
 using namespace simdjson::ondemand;
-using namespace std::string_view_literals;
 
-static JsonTypes map_simd_types(json_type type) {
+static constexpr JsonTypes map_simd_types(json_type type) {
   switch (type) {
   case json_type::array:
     return JsonTypes::Array;
@@ -20,11 +20,13 @@ static JsonTypes map_simd_types(json_type type) {
     return JsonTypes::Object;
   case json_type::string:
     return JsonTypes::String;
+  default:
+    return JsonTypes::Invalid;
   }
-  return JsonTypes::Invalid;
 }
 
-static JsonErrorTypes map_err_type(const simdjson::error_code err_type) {
+static constexpr JsonErrorTypes
+map_err_type(const simdjson::error_code err_type) {
   switch (err_type) {
   case simdjson::INCORRECT_TYPE:
     return JsonErrorTypes::WrongType;
@@ -68,16 +70,11 @@ static JsonErrorTypes map_err_type(const simdjson::error_code err_type) {
     return JsonErrorTypes::Internal;
 
   default:
-    break;
+    return JsonErrorTypes::Invalid;
   }
-  return JsonErrorTypes::Invalid;
 }
 
-UnexpJsonError makeJsonError(const simdjson::error_code err_type) {
-  return makeJsonError(map_err_type(err_type),
-                       std::string(simdjson::error_message(err_type)));
-}
-
+// -------------------------------------------
 JsonTypes SimdValue::get_type() const { return map_simd_types(m_value.type()); }
 
 ExpType<bool> SimdValue::is_null() const {
@@ -113,17 +110,29 @@ ExpType<JsonArray> SimdValue::read_array() const {
 }
 
 ExpType<JsonObject> SimdValue::read_object() const {
-  if (m_value.type() == json_type::object) {
-    // return m_value.get_object();
-  }
-  return makeJsonError(JsonErrorTypes::WrongType, "not an object"sv);
-
-  // return transform_expected<JsonArray>(
-  //     map_simd_data(m_value.get_object()),
-  //     [](simdjson::ondemand::object obj) { return SimdObject::create(obj);
-  //     });
+  return transform_expected<JsonObject>(
+      map_simd_data(m_value.get_object()),
+      [](simdjson::ondemand::object obj) { return SimdObject::create(obj); });
 }
 
 JsonValue SimdValue::create(simdjson::ondemand::value& val) {
   return create_json(std::move(std::make_unique<SimdValue>(val)));
 }
+
+// -------------------------------------------
+UnexpJsonError makeJsonError(const simdjson::error_code err_type) {
+  return makeJsonError(map_err_type(err_type),
+                       std::string(simdjson::error_message(err_type)));
+}
+
+// -------------------------------------------
+// -------------------------------------------
+namespace JsonTypedefCodeGen::Reader {
+
+  using namespace simdjson;
+
+  DLL_PUBLIC ExpType<JsonValue> simdjson_root_value(ondemand::value& root) {
+    return SimdValue::create(root);
+  }
+
+} // namespace JsonTypedefCodeGen::Reader

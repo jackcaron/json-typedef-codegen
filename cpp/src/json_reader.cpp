@@ -6,8 +6,6 @@ namespace JsonTypedefCodeGen::Reader {
 
   namespace Specialization {
 
-    // NOTE make the "create_json" functions hidden in the SO file
-
     // - - -
     BaseArrayIterator::~BaseArrayIterator() {}
     ArrayIterator::~ArrayIterator() {}
@@ -127,14 +125,14 @@ namespace JsonTypedefCodeGen::Reader {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonArrayIterator();
   }
 
-  //    -   -   -   -   -   -   -   -   -   -
+  // ------------------------------------------
   JsonObject::JsonObject(Spec::ObjectPtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
   DLL_PUBLIC JsonObjectIterator JsonObject::begin() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonObjectIterator();
   }
 
-  //    -   -   -   -   -   -   -   -   -   -
+  // ------------------------------------------
   static UnexpJsonError noPimpl() {
     return makeJsonError(JsonErrorTypes::Invalid, "invalid/empty JsonValue"sv);
   }

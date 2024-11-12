@@ -1,4 +1,5 @@
 #include "array.hpp"
+
 #include "value.hpp"
 
 ExpType<JsonValue> SimdArrayIterator::get() const {
@@ -38,7 +39,8 @@ JsonArrayIterator SimdArrayIterator::create(ArrIterResult begin, ArrIter end) {
 JsonArrayIterator SimdArray::begin() const {
   auto first = m_array.begin(), last = m_array.end();
   ArrIter end; // default and invalid, never used if there's an error
-  if (auto err_type = last.error(); err_type != simdjson::SUCCESS) {
+
+  if (const auto err_type = last.error(); err_type != simdjson::SUCCESS) {
     first = ArrIterResult(err_type); // forward the error on the first iterator
   } else {
     end = last.value_unsafe();

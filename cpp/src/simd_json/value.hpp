@@ -28,6 +28,7 @@ public:
   static JsonValue create(simdjson::ondemand::value& val);
 };
 
+// -------------------------------------------
 UnexpJsonError makeJsonError(const simdjson::error_code err_type);
 
 template <typename Type>
