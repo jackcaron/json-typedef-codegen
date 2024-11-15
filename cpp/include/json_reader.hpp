@@ -205,7 +205,8 @@ namespace JsonTypedefCodeGen::Reader {
   };
 
 #ifdef USE_SIMD
-  ExpType<JsonValue> simdjson_root_value(simdjson::ondemand::value& root);
+  ExpType<JsonValue> simdjson_root_value(
+      simdjson::simdjson_result<simdjson::ondemand::value> root);
 #endif
 
 } // namespace JsonTypedefCodeGen::Reader

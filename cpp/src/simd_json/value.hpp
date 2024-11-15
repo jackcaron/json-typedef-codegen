@@ -25,7 +25,7 @@ public:
   virtual ExpType<JsonArray> read_array() const override;
   virtual ExpType<JsonObject> read_object() const override;
 
-  static JsonValue create(simdjson::ondemand::value& val);
+  static JsonValue create(simdjson::ondemand::value val);
 };
 
 // -------------------------------------------

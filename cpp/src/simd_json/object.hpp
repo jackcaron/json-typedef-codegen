@@ -36,5 +36,5 @@ public:
 
   virtual JsonObjectIterator begin() const override;
 
-  static JsonObject create(simdjson::ondemand::object& obj);
+  static JsonObject create(simdjson::ondemand::object obj);
 };

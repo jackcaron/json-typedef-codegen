@@ -29,6 +29,7 @@ static constexpr JsonErrorTypes
 map_err_type(const simdjson::error_code err_type) {
   switch (err_type) {
   case simdjson::INCORRECT_TYPE:
+  case simdjson::SCALAR_DOCUMENT_AS_VALUE:
     return JsonErrorTypes::WrongType;
 
   case simdjson::STRING_ERROR:
@@ -63,12 +64,11 @@ map_err_type(const simdjson::error_code err_type) {
   case simdjson::PARSER_IN_USE:
   case simdjson::OUT_OF_ORDER_ITERATION:
   case simdjson::INSUFFICIENT_PADDING:
-  case simdjson::INCOMPLETE_ARRAY_OR_OBJECT:
-  case simdjson::SCALAR_DOCUMENT_AS_VALUE:
   case simdjson::OUT_OF_BOUNDS:
   case simdjson::TRAILING_CONTENT:
     return JsonErrorTypes::Internal;
 
+  case simdjson::INCOMPLETE_ARRAY_OR_OBJECT:
   default:
     return JsonErrorTypes::Invalid;
   }
@@ -98,24 +98,21 @@ ExpType<int64_t> SimdValue::read_i64() const {
 }
 
 ExpType<std::string> SimdValue::read_str() const {
-  return transform_expected<std::string>(
-      map_simd_data(m_value.get_string()),
-      [](const std::string_view sv) { return std::string(sv); });
+  return map_simd_data(m_value.get_string())
+      .transform([](const std::string_view& sv) {
+        return std::string(sv);
+      });
 }
 
 ExpType<JsonArray> SimdValue::read_array() const {
-  return transform_expected<JsonArray>(
-      map_simd_data(m_value.get_array()),
-      [](simdjson::ondemand::array arr) { return SimdArray::create(arr); });
+  return map_simd_data(m_value.get_array()).transform(SimdArray::create);
 }
 
 ExpType<JsonObject> SimdValue::read_object() const {
-  return transform_expected<JsonObject>(
-      map_simd_data(m_value.get_object()),
-      [](simdjson::ondemand::object obj) { return SimdObject::create(obj); });
+  return map_simd_data(m_value.get_object()).transform(SimdObject::create);
 }
 
-JsonValue SimdValue::create(simdjson::ondemand::value& val) {
+JsonValue SimdValue::create(simdjson::ondemand::value val) {
   return create_json(std::move(std::make_unique<SimdValue>(val)));
 }
 
@@ -131,8 +128,13 @@ namespace JsonTypedefCodeGen::Reader {
 
   using namespace simdjson;
 
-  DLL_PUBLIC ExpType<JsonValue> simdjson_root_value(ondemand::value& root) {
-    return SimdValue::create(root);
+  DLL_PUBLIC ExpType<JsonValue>
+  simdjson_root_value(simdjson::simdjson_result<ondemand::value> root) {
+    if (const auto err_code = root.error(); err_code == simdjson::SUCCESS) {
+      return SimdValue::create(root.value_unsafe());
+    } else {
+      return ::makeJsonError(err_code);
+    }
   }
 
 } // namespace JsonTypedefCodeGen::Reader

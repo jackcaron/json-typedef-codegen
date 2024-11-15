@@ -51,6 +51,6 @@ JsonObjectIterator SimdObject::begin() const {
   return SimdObjectIterator::create(first, end);
 }
 
-JsonObject SimdObject::create(simdjson::ondemand::object& arr) {
+JsonObject SimdObject::create(simdjson::ondemand::object arr) {
   return create_json(std::move(std::make_unique<SimdObject>(arr)));
 }

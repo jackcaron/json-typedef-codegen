@@ -36,5 +36,5 @@ public:
 
   virtual JsonArrayIterator begin() const override;
 
-  static JsonArray create(simdjson::ondemand::array& arr);
+  static JsonArray create(simdjson::ondemand::array arr);
 };

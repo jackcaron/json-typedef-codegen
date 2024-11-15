@@ -48,6 +48,6 @@ JsonArrayIterator SimdArray::begin() const {
   return SimdArrayIterator::create(first, end);
 }
 
-JsonArray SimdArray::create(simdjson::ondemand::array& arr) {
+JsonArray SimdArray::create(simdjson::ondemand::array arr) {
   return create_json(std::move(std::make_unique<SimdArray>(arr)));
 }
