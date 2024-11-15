@@ -38,8 +38,8 @@ if (BUILD_WRITER)
 endif()
 
 # C/C++
-set(CMAKE_C_COMPILER "gcc-12")
-set(CMAKE_CXX_COMPILER "g++-12")
+set(CMAKE_C_COMPILER "gcc-13")
+set(CMAKE_CXX_COMPILER "g++-13")
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED 23)
 
@@ -76,10 +76,12 @@ if (BUILD_READER)
   endif()
 
   if (ENABLE_RAPID_JSON)
+    add_definitions(-DUSE_IN_RAPID)
     # LATER
   endif()
 
   if (ENABLE_NAPI)
+    add_definitions(-DUSE_IN_NAPI)
     # LATER
   endif()
 
@@ -98,7 +100,9 @@ add_library(json_wrapper SHARED $<TARGET_OBJECTS:json_wrapper_obj>)
 # tests
 if (BUILD_TEST)
   # add test options based on the build options
+  find_package(GTest)
+
   file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
   add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
-  target_link_libraries(json_wrapper_tests json_wrapper_static)
+  target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
 endif()
