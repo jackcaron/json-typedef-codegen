@@ -1,1 +1,5 @@
 /target
+
+# vscode user specifics
+.vscode/c_cpp_properties.json
+

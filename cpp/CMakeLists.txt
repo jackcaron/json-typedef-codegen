@@ -27,10 +27,6 @@ if (BUILD_READER)
   if (ENABLE_RAPID_JSON)
     message(FATAL_ERROR "option ENABLE_RAPID_JSON not supported yet")
   endif()
-
-  if (ENABLE_NAPI)
-    message(FATAL_ERROR "option ENABLE_NAPI not supported yet")
-  endif()
 endif()
 
 if (BUILD_WRITER)
@@ -64,6 +60,39 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 file(GLOB INC_HPP "include/*.hpp")
 file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
 
+# NAPI, use node.js/npm to find the include directories
+if (ENABLE_NAPI)
+  find_program(NODE_exec node REQUIRED)
+  find_program(NPM_exec npm REQUIRED)
+  add_definitions(-DNAPI_DISABLE_CPP_EXCEPTIONS)
+
+  message("NPM: ${NPM_exec}")
+  execute_process(
+    COMMAND ${NPM_exec} "config" "get" "prefix"
+    OUTPUT_VARIABLE NODE_PREFIX
+    ERROR_VARIABLE ERR_NODE
+  )
+
+  if (NOT "${ERR_NODE}" STREQUAL "")
+    message(FATAL_ERROR "Cannot find node.js base directory:\n${ERR_NODE}")
+  endif()
+
+  string(STRIP "${NODE_PREFIX}" NODE_PREFIX)
+  include_directories("${NODE_PREFIX}/include/node")
+
+  execute_process(
+    COMMAND ${NODE_exec} "-p" "require('path').resolve(require('node-addon-api').include_dir)"
+    OUTPUT_VARIABLE NAPI_INCL
+    ERROR_VARIABLE ERR_NAPI
+  )
+
+  if (NOT "${ERR_NAPI}" STREQUAL "")
+    message(FATAL_ERROR "Cannot find 'node-addon-api':\n${ERR_NAPIs}")
+  endif()
+
+  include_directories("${NAPI_INCL}")
+endif()
+
 # reader library options
 if (BUILD_READER)
 
@@ -82,7 +111,8 @@ if (BUILD_READER)
 
   if (ENABLE_NAPI)
     add_definitions(-DUSE_IN_NAPI)
-    # LATER
+    file(GLOB_RECURSE NAPISRC "src/napi/*.cpp" "src/napi/*.hpp")
+    set(CPPSRC ${CPPSRC} ${NAPISRC})
   endif()
 
 endif()
@@ -95,14 +125,20 @@ endif()
 # static/shared library
 add_library(json_wrapper_obj OBJECT ${INC_HPP} ${CPPSRC})
 add_library(json_wrapper_static STATIC $<TARGET_OBJECTS:json_wrapper_obj>)
-add_library(json_wrapper SHARED $<TARGET_OBJECTS:json_wrapper_obj>)
+if (NOT ENABLE_NAPI)
+  add_library(json_wrapper SHARED $<TARGET_OBJECTS:json_wrapper_obj>)
+endif()
 
 # tests
 if (BUILD_TEST)
-  # add test options based on the build options
-  find_package(GTest)
+  if (ENABLE_NAPI)
+    message("Cannot build C++ tests with Node.js NAPI")
+  else()
+    # add test options based on the build options
+    find_package(GTest)
 
-  file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
-  add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
-  target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
+    file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
+    add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
+    target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
+  endif()
 endif()

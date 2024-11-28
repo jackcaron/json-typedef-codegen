@@ -51,7 +51,9 @@
     "cinttypes": "cpp",
     "typeinfo": "cpp",
     "expected": "cpp",
-    "string_view": "cpp"
+    "string_view": "cpp",
+    "chrono": "cpp",
+    "ratio": "cpp"
   },
   "clang-format.executable": "clang-format",
   "clang-format.style": "file",
