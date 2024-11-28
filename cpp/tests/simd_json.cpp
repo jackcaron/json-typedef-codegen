@@ -1,7 +1,6 @@
 #ifdef USE_SIMD
 
-#include "json_reader.hpp"
-#include "simd_json/simdjson.h"
+#include "simd_reader.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>
@@ -122,7 +121,7 @@ TEST(SIMD_JSON, array_of_numbers_with_error) {
       EXPECT_FALSE(item.has_value());
       auto err = std::move(item.error());
       EXPECT_EQ(err.type, JsonErrorTypes::Internal);
-      std::cerr << "ERROR: " << err.message << "\n\n";
+      // std::cerr << "ERROR: " << err.message << "\n\n";
     }
     ++exp;
   }

@@ -204,9 +204,4 @@ namespace JsonTypedefCodeGen::Reader {
     ExpType<JsonObject> read_object() const;
   };
 
-#ifdef USE_SIMD
-  ExpType<JsonValue> simdjson_root_value(
-      simdjson::simdjson_result<simdjson::ondemand::value> root);
-#endif
-
 } // namespace JsonTypedefCodeGen::Reader
