@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "description": "For building NAPI JSON Wrapper and its tests",
+  "scripts": {
+    "build-dev": "cmake-js build -D",
+    "build": "cmake-js build"
+  },
+  "devDependencies": {
+    "cmake-js": "^7.3.0",
+    "node-addon-api": "^8.2.2"
+  }
+}
