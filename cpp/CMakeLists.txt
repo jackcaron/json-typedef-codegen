@@ -10,6 +10,10 @@ option(BUILD_READER "build the reader wrappers" ON)
 option(BUILD_WRITER "build the reader wrappers" OFF)
 option(BUILD_TEST "build the tests" ON)
 
+if (CMAKE_JS_VERSION)
+  set(ENABLE_NAPI ON)
+endif()
+
 # option checks
 if ((NOT BUILD_READER) AND (NOT BUILD_WRITER))
   message(FATAL_ERROR "option BUILD_READER or BUILD_WRITER must be set")
@@ -66,7 +70,6 @@ if (ENABLE_NAPI)
   find_program(NPM_exec npm REQUIRED)
   add_definitions(-DNAPI_DISABLE_CPP_EXCEPTIONS)
 
-  message("NPM: ${NPM_exec}")
   execute_process(
     COMMAND ${NPM_exec} "config" "get" "prefix"
     OUTPUT_VARIABLE NODE_PREFIX
@@ -132,12 +135,20 @@ endif()
 # tests
 if (BUILD_TEST)
   if (ENABLE_NAPI)
-    message("Cannot build C++ tests with Node.js NAPI")
-  else()
-    # add test options based on the build options
-    find_package(GTest)
+    if (CMAKE_JS_VERSION)
+      file(GLOB_RECURSE TESTSRC "tests/napi_tests/*.cpp" "tests/napi_tests/*.hpp")
 
-    file(GLOB_RECURSE TESTSRC "tests/*.cpp" "tests/*.hpp")
+      add_library(json_wrapper_tests SHARED ${TESTSRC} ${INC_HPP})
+      set_target_properties(json_wrapper_tests PROPERTIES PREFIX "" SUFFIX ".node")
+      target_link_libraries(json_wrapper_tests json_wrapper_static)
+    else()
+      message(FATAL_ERROR "need cmake-js to build the NAPI tests")
+    endif()
+  else() # ENABLE_NAPI
+    find_package(GTest)
+    file(GLOB_RECURSE TESTSRC "tests/gtests/*.cpp" "tests/gtests/*.hpp")
+
+    # add test options based on the build options
     add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
   endif()
