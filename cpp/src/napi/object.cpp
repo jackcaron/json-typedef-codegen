@@ -47,7 +47,6 @@ JsonObjectIterator NapiObjectIterator::create(Napi::Object object) {
 
 // -------------------------------------------
 JsonObjectIterator NapiObject::begin() const {
-
   return NapiObjectIterator::create(m_object);
 }
 

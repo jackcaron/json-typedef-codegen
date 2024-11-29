@@ -1,6 +1,7 @@
 #include "value.hpp"
 
 #include "../internal.hpp"
+#include "array.hpp"
 #include "object.hpp"
 
 using namespace std::string_view_literals;
@@ -66,16 +67,18 @@ static constexpr JsonErrorTypes map_err_type(const napi_status err_type) {
 }
 
 // -------------------------------------------
-JsonTypes NapiValue::get_type() const { return map_napi_type(m_value.Type()); }
+JsonTypes NapiValue::get_type() const {
+  if (m_value.IsEmpty()) {
+    return JsonTypes::Invalid;
+  } else if (m_value.IsArray()) {
+    return JsonTypes::Array;
+  } else {
+    return map_napi_type(m_value.Type());
+  }
+}
 
 ExpType<bool> NapiValue::is_null() const {
-  switch (m_value.Type()) {
-  case napi_undefined:
-  case napi_null:
-    return true;
-  default:
-    return false;
-  }
+  return m_value.IsNull() || m_value.IsUndefined();
 }
 
 ExpType<bool> NapiValue::read_bool() const {
@@ -124,8 +127,7 @@ ExpType<std::string> NapiValue::read_str() const {
 
 ExpType<JsonArray> NapiValue::read_array() const {
   if (m_value.IsArray()) {
-    //
-    // m_value.IsTypedArray() // ???? NO
+    return NapiArray::create(m_value.As<Napi::Array>());
   }
   return makeJsonError(JsonErrorTypes::WrongType, "not an array"sv);
 }
