@@ -3,7 +3,9 @@
   "description": "For building NAPI JSON Wrapper and its tests",
   "scripts": {
     "build-dev": "cmake-js build -D",
-    "build": "cmake-js build"
+    "build": "cmake-js build",
+    "test-dev": "node -p \"process.exit(require('./lib/Debug/json_wrapper_tests').run())\"",
+    "test": "node -p \"process.exit(require('./lib/Release/json_wrapper_tests').run())\""
   },
   "devDependencies": {
     "cmake-js": "^7.3.0",

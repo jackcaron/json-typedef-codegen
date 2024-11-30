@@ -62,7 +62,7 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 
 # find files
 include_directories("${CMAKE_SOURCE_DIR}/include")
-file(GLOB INC_HPP "include/*.hpp")
+file(GLOB_RECURSE INC_HPP "include/*.hpp")
 file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
 
 # NAPI, use node.js/npm to find the include directories
@@ -104,7 +104,7 @@ if (BUILD_READER)
     add_definitions(-DUSE_SIMD)
     include_directories("external")
     file(GLOB SIMDJSONEXT "external/simd_json/simdjson.cpp")
-    file(GLOB_RECURSE SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
+    file(GLOB SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
     set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
   endif()
 

@@ -72,6 +72,14 @@ TEST(SIMD_JSON, empty_object) {
 
   auto val = std::move(json_val.value());
   EXPECT_EQ(val.get_type(), JsonTypes::Object);
+
+  auto obj = val.read_object();
+  EXPECT_TRUE(obj.has_value());
+  bool has_item = false;
+  for (auto item : obj.value()) {
+    has_item = true;
+  }
+  EXPECT_FALSE(has_item);
 }
 
 TEST(SIMD_JSON, array_of_numbers) {
