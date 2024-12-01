@@ -11,22 +11,19 @@ using namespace std::string_view_literals;
 
 namespace {
 
-  bool bypass_array(Napi::Value& val) {
+  Napi::Value bypass_array(const Napi::Value val) {
     if (val.IsArray()) {
       if (auto tmp_arr = val.As<Napi::Array>(); tmp_arr.Length() == 1) {
-        val = tmp_arr.Get(0u);
-        return true;
+        return tmp_arr.Get(0u);
       }
     }
-    return false;
+    return Napi::Value();
   }
 
-  Napi::Value run_object_script(Napi::Env env, const char* script) {
-    if (auto script_val = env.RunScript(std::format("[{}]", script).c_str());
-        bypass_array(script_val)) {
-      return script_val;
-    }
-    return Napi::Value();
+  // eval('{...}') produces an "undefined" value, the bypass is to put the data
+  // in an array, being equivalent to eval('[{...}]'), then grab the first item
+  Napi::Value run_object_script(Napi::Env env, const std::string_view script) {
+    return bypass_array(env.RunScript(std::format("[{}]", script).c_str()));
   }
 
 } // namespace
@@ -81,7 +78,7 @@ NAPI_TEST(NAPI_IN, empty_array) {
 }
 
 NAPI_TEST(NAPI_IN, empty_object) {
-  auto script_val = run_object_script(env, "{}");
+  auto script_val = run_object_script(env, "{}"sv);
 
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
@@ -126,7 +123,7 @@ NAPI_TEST(NAPI_IN, object_key_val) {
   constexpr std::array<std::pair<std::string_view, uint64_t>, 3> expectations =
       {{{"A"sv, 1ul}, {"B"sv, 2ul}, {"C"sv, 3ul}}};
 
-  auto script_val = run_object_script(env, R"( { "A": 1, "B": 2, "C": 3 } )");
+  auto script_val = run_object_script(env, R"( { "A": 1, "B": 2, "C": 3 } )"sv);
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
 
@@ -168,7 +165,7 @@ NAPI_TEST(NAPI_IN, object_with_incr_arrays_of_types) {
     "Chuck": [{}, {}, {}],
     "Dave": [[],[],[],[]],
     "Elle": ["a", "b", "c", "d", "e"]
-  } )");
+  } )"sv);
 
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
