@@ -1,46 +1,54 @@
 #include "utils.hpp"
 
+#include <format>
 #include <iostream>
 #include <vector>
 
 // ---------------------------------------------
-class Runner {
-private:
-  std::vector<std::string_view> m_names;
-  std::vector<TestFunc> m_functions;
+namespace {
 
-public:
-  Runner() = default;
+  enum class Status : int {
+    Ok = 0,
+    Failed
+  };
 
-  bool add(const std::string_view name, TestFunc func) {
-    m_names.emplace_back(name);
-    m_functions.emplace_back(func);
-    return true;
-  }
+  class Runner {
+  private:
+    std::vector<std::string_view> m_names;
+    std::vector<TestFunc> m_functions;
 
-  int execute(Napi::Env env) {
-    // TODO: improve logging with colors
-    int success = 0;
-    std::cout << "Executing " << m_names.size() << " tests\n";
-    auto fiter = m_functions.begin();
-    for (auto name : m_names) {
-      std::cout << "Execute: " << name << "\n";
+  public:
+    Runner() = default;
 
-      bool result = true;
-      (*fiter)(env, result);
-      if (result) {
-        std::cout << "---- OK\n";
-      } else {
-        std::cout << "---- FAILED\n";
-        success = 1;
-      }
-      ++fiter;
+    bool add(const std::string_view name, TestFunc func) {
+      m_names.emplace_back(name);
+      m_functions.emplace_back(func);
+      return true;
     }
-    return success;
-  }
-};
 
-static Runner test_runner;
+    Status execute(Napi::Env env) {
+      Status success = Status::Ok;
+      auto fiter = m_functions.begin();
+      for (auto name : m_names) {
+        std::cout << std::format("\x1B[32mExecute: {}\x1B[0m\n", name);
+
+        bool result = true;
+        (*fiter)(env, result);
+        if (result) {
+          std::cout << "\x1B[32m---- OK\x1B[0m\n";
+        } else {
+          std::cout << "\x1B[31m---- FAILED\x1B[0m\n";
+          success = Status::Failed;
+        }
+        ++fiter;
+      }
+      return success;
+    }
+  };
+
+  static Runner test_runner;
+
+} // namespace
 
 TestItem::TestItem(const std::string_view name, TestFunc func)
     : m_ok(test_runner.add(name, func)) {}
@@ -48,7 +56,7 @@ TestItem::TestItem(const std::string_view name, TestFunc func)
 // ---------------------------------------------
 static Napi::Value run(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
-  return Napi::Number::New(env, test_runner.execute(env));
+  return Napi::Number::New(env, int(test_runner.execute(env)));
 }
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {

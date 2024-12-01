@@ -3,22 +3,33 @@
 #include "napi.hpp"
 #include "utils.hpp"
 
+#include <format>
 #include <iostream>
 
 using namespace JsonTypedefCodeGen;
 using namespace std::string_view_literals;
 
-static bool bypass_array(Napi::Value& val) {
-  if (!val.IsArray()) {
+namespace {
+
+  bool bypass_array(Napi::Value& val) {
+    if (val.IsArray()) {
+      if (auto tmp_arr = val.As<Napi::Array>(); tmp_arr.Length() == 1) {
+        val = tmp_arr.Get(0u);
+        return true;
+      }
+    }
     return false;
   }
-  auto tmp_arr = val.As<Napi::Array>();
-  if (tmp_arr.Length() != 1) {
-    return false;
+
+  Napi::Value run_object_script(Napi::Env env, const char* script) {
+    if (auto script_val = env.RunScript(std::format("[{}]", script).c_str());
+        bypass_array(script_val)) {
+      return script_val;
+    }
+    return Napi::Value();
   }
-  val = tmp_arr.Get(0u);
-  return true;
-}
+
+} // namespace
 
 NAPI_TEST(NAPI_IN, ignore_empty) {
   auto script_val = env.RunScript("");
@@ -70,10 +81,7 @@ NAPI_TEST(NAPI_IN, empty_array) {
 }
 
 NAPI_TEST(NAPI_IN, empty_object) {
-  // eval() doesn't like object defined at the root, so putting it in an array
-  auto script_val = env.RunScript(R"( [{}] )");
-
-  NAPI_EXP_TRUE(bypass_array(script_val));
+  auto script_val = run_object_script(env, "{}");
 
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
@@ -115,13 +123,10 @@ NAPI_TEST(NAPI_IN, array_of_numbers) {
 }
 
 NAPI_TEST(NAPI_IN, object_key_val) {
-  // eval() doesn't like object defined at the root, so putting it in an array
-  auto script_val = env.RunScript(R"( [{ "A": 1, "B": 2, "C": 3 }] )");
   constexpr std::array<std::pair<std::string_view, uint64_t>, 3> expectations =
       {{{"A"sv, 1ul}, {"B"sv, 2ul}, {"C"sv, 3ul}}};
 
-  NAPI_EXP_TRUE(bypass_array(script_val));
-
+  auto script_val = run_object_script(env, R"( { "A": 1, "B": 2, "C": 3 } )");
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
 
@@ -148,15 +153,6 @@ NAPI_TEST(NAPI_IN, object_key_val) {
 }
 
 NAPI_TEST(NAPI_IN, object_with_incr_arrays_of_types) {
-  // eval() doesn't like object defined at the root, so putting it in an array
-  auto script_val = env.RunScript(R"( [{
-    "Alice": [1],
-    "Bob": [false, true],
-    "Chuck": [{}, {}, {}],
-    "Dave": [[],[],[],[]],
-    "Elle": ["a", "b", "c", "d", "e"]
-  }] )");
-
   constexpr std::array<std::tuple<std::string_view, JsonTypes, int>, 5>
       expectations = {{
           {"Alice"sv, JsonTypes::Number, 1},
@@ -166,7 +162,13 @@ NAPI_TEST(NAPI_IN, object_with_incr_arrays_of_types) {
           {"Elle"sv, JsonTypes::String, 5},
       }};
 
-  NAPI_EXP_TRUE(bypass_array(script_val));
+  auto script_val = run_object_script(env, R"( {
+    "Alice": [1],
+    "Bob": [false, true],
+    "Chuck": [{}, {}, {}],
+    "Dave": [[],[],[],[]],
+    "Elle": ["a", "b", "c", "d", "e"]
+  } )");
 
   auto json_val = Reader::napi_root_value(script_val);
   NAPI_EXP_TRUE(json_val.has_value());
