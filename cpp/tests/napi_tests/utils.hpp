@@ -9,14 +9,9 @@ using TestFunc = std::function<void(Napi::Env, bool&)>;
 // ---------------------------------------------
 
 class TestItem {
-private:
-  bool m_ok = false;
-
 public:
   TestItem() = delete;
   TestItem(const std::string_view name, TestFunc func);
-
-  inline bool ok() const { return m_ok; }
 };
 
 // ---------------------------------------------

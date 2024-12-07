@@ -10,6 +10,10 @@ option(BUILD_READER "build the reader wrappers" ON)
 option(BUILD_WRITER "build the reader wrappers" OFF)
 option(BUILD_TEST "build the tests" ON)
 
+# params
+set(EXT_LIB_SIMD_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where simd_json directory is")
+set(EXT_LIB_RAPID_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where rapidjson directory is")
+
 if (CMAKE_JS_VERSION)
   set(ENABLE_NAPI ON)
 endif()
@@ -60,11 +64,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${TARGET_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 
-# find files
-include_directories("${CMAKE_SOURCE_DIR}/include")
-file(GLOB_RECURSE INC_HPP "include/*.hpp")
-file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
-
 # NAPI, use node.js/npm to find the include directories
 if (ENABLE_NAPI)
   find_program(NODE_exec node REQUIRED)
@@ -91,26 +90,56 @@ if (ENABLE_NAPI)
   )
 
   if (NOT "${ERR_NAPI}" STREQUAL "")
-    message(FATAL_ERROR "Cannot find 'node-addon-api':\n${ERR_NAPIs}")
+    message(FATAL_ERROR "Cannot find 'node-addon-api':\n${ERR_NAPI}")
   endif()
 
   include_directories("${NAPI_INCL}")
 endif()
 
+# find files
+include_directories("${CMAKE_SOURCE_DIR}/include")
+file(GLOB_RECURSE INC_HPP "include/*.hpp")
+file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
+
 # reader library options
 if (BUILD_READER)
 
   if (ENABLE_SIMD_JSON)
+    set(SIMD_JSON_DIR "${EXT_LIB_SIMD_JSON_PATH}/simd_json")
+    if (NOT EXISTS ${SIMD_JSON_DIR})
+      message(FATAL_ERROR "cannot find \"simd_json\" directory in ${EXT_LIB_SIMD_JSON_PATH}")
+    elseif (NOT EXISTS "${SIMD_JSON_DIR}/simdjson.h")
+      message(FATAL_ERROR "cannot find \"simd_json/simdjson.h\" directory in ${EXT_LIB_SIMD_JSON_PATH}")
+    endif()
+
+    file(GLOB SIMDJSONEXT "${SIMD_JSON_DIR}/simdjson.cpp")
+    list(LENGTH SIMDJSONEXT SIMDJSONEXT_LEN)
+    if (SIMDJSONEXT_LEN EQUAL 0)
+      message(FATAL_ERROR "cannot find simd_json files in ")
+    endif()
+
     add_definitions(-DUSE_SIMD)
-    include_directories("external")
-    file(GLOB SIMDJSONEXT "external/simd_json/simdjson.cpp")
+
+    include_directories("${EXT_LIB_SIMD_JSON_PATH}")
     file(GLOB SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
     set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
   endif()
 
   if (ENABLE_RAPID_JSON)
+    set(RAPID_JSON_DIR "${EXT_LIB_RAPID_JSON_PATH}/rapidjson")
+    if (NOT EXISTS ${RAPID_JSON_DIR})
+      message(FATAL_ERROR "cannot find \"rapidjson\" directory in ${EXT_LIB_RAPID_JSON_PATH}")
+    endif()
+
+    file(GLOB_RECURSE RAPIDJSONEXT "${RAPID_JSON_DIR}/*.h")
+    list(LENGTH RAPIDJSONEXT RAPIDJSONEXT_LEN)
+    if (RAPIDJSONEXT_LEN EQUAL 0)
+      message(FATAL_ERROR "cannot find rapidjson header files")
+    endif()
+
     add_definitions(-DUSE_IN_RAPID)
-    # LATER
+    include_directories("${EXT_LIB_RAPID_JSON_PATH}")
+    # TODO: source files
   endif()
 
   if (ENABLE_NAPI)

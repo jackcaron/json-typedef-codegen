@@ -50,8 +50,9 @@ namespace {
 
 } // namespace
 
-TestItem::TestItem(const std::string_view name, TestFunc func)
-    : m_ok(test_runner.add(name, func)) {}
+TestItem::TestItem(const std::string_view name, TestFunc func) {
+  test_runner.add(name, func);
+}
 
 // ---------------------------------------------
 static Napi::Value run(const Napi::CallbackInfo& info) {
