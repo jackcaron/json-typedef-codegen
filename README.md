@@ -45,6 +45,7 @@ type User struct {
 Or types/classes/structs for any of the following programming languages:
 
 * C# with `System.Text.Json` as the JSON backend
+* [C++](cpp/README.md)
 * Golang
 * Java with Jackson as the JSON backend
 * Python

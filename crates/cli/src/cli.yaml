@@ -103,6 +103,20 @@ args:
       long: rust-out
       takes_value: true
       value_name: dir
+  - rust-derive:
+      help: Extra derive to add, comma separated
+      long: rust-derive
+      takes_value: true
+      value_name: derive
+      requires:
+        - rust-out
+
+  # C++
+  - cpp-out:
+      help: Output directory for C++ code generation
+      long: cpp-out
+      takes_value: true
+      value_name: dir
 
   # TypeScript
   - typescript-out:

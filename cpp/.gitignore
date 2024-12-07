@@ -1,0 +1,11 @@
+# compilation
+build*/*
+lib/*
+bin/*
+external/*
+node_modules/*
+package-lock.json
+
+# misc.
+notes.txt
+
