@@ -103,6 +103,8 @@ impl<'a, T: Target> CodeGenerator<'a, T> {
             },
         )?;
 
+        self.target.conclude()?;
+
         Ok(CodegenInfo {
             root_name,
             definition_names: self.definition_names.clone(),
