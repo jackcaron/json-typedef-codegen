@@ -117,6 +117,13 @@ args:
       long: cpp-out
       takes_value: true
       value_name: dir
+  - cpp-props:
+      help: C++ JSON properties
+      long: cpp-props
+      takes_value: true
+      value_name: dir
+      requires:
+        - cpp-out
 
   # TypeScript
   - typescript-out:

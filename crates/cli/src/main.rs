@@ -134,7 +134,10 @@ fn main() -> Result<()> {
     if let Some(out_dir) = matches.value_of("rust-out") {
         log.start("Rust", out_dir);
 
-        let extra_derives = matches.value_of("rust-derive").unwrap_or_default().to_owned();
+        let extra_derives = matches
+            .value_of("rust-derive")
+            .unwrap_or_default()
+            .to_owned();
 
         let target = jtd_codegen_target_rust::Target::new(&extra_derives);
 
@@ -146,7 +149,18 @@ fn main() -> Result<()> {
     }
 
     if let Some(out_dir) = matches.value_of("cpp-out") {
-        return Err(anyhow!("C++ not implemented yet"));
+        log.start("C++", out_dir);
+
+        use jtd_codegen_target_cpp::props::CppProps;
+
+        let cpp_props = CppProps::from_file(matches.value_of("cpp-props"))?;
+        let target = jtd_codegen_target_cpp::Target::new(cpp_props, root_name.clone());
+
+        let codegen_info =
+            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
+                .with_context(|| "Failed to generate C++ code")?;
+
+        log.finish("C++", &codegen_info);
     }
 
     if let Some(out_dir) = matches.value_of("typescript-out") {
