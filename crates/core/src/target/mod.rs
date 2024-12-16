@@ -19,9 +19,6 @@ pub trait Target {
         state: &mut Self::FileState,
         item: Item,
     ) -> Result<Option<String>>;
-    fn conclude(&self) -> Result<()> {
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
