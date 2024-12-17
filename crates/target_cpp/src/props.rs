@@ -40,8 +40,8 @@ enum Dictionary {
 impl Dictionary {
     fn get_include_file(&self) -> &'static str {
         match self {
-            Dictionary::Unordered => "unordered_map",
-            Dictionary::Ordered => "map",
+            Dictionary::Unordered => "<unordered_map>",
+            Dictionary::Ordered => "<map>",
         }
     }
     fn get_container(&self) -> &'static str {
@@ -62,6 +62,8 @@ pub struct CppProps {
 
     #[serde(rename = "dictionary_type", default)]
     dictionary_type: Dictionary,
+    // include found header files needed?
+    // include Json library, and where it is ?
 }
 
 impl CppProps {
