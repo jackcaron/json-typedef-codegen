@@ -15,8 +15,8 @@ enum Guard {
 impl Guard {
     fn get_guard(&self) -> String {
         match self {
-            Guard::Pragma => "#pragma once\n".to_string(),
-            Guard::Name(n) => format!("#ifndef {}\n#define {}\n", n, n),
+            Guard::Pragma => "#pragma once\n\n".to_string(),
+            Guard::Name(n) => format!("#ifndef {}\n#define {}\n\n", n, n),
         }
     }
 
@@ -50,6 +50,18 @@ impl Dictionary {
             Dictionary::Ordered => "std::map",
         }
     }
+    fn get_include_file_set(&self) -> &'static str {
+        match self {
+            Dictionary::Unordered => "<unordered_set>",
+            Dictionary::Ordered => "<set>",
+        }
+    }
+    fn get_container_set(&self) -> &'static str {
+        match self {
+            Dictionary::Unordered => "std::unordered_set",
+            Dictionary::Ordered => "std::set",
+        }
+    }
 }
 
 #[derive(Default, Deserialize)]
@@ -64,6 +76,9 @@ pub struct CppProps {
     dictionary_type: Dictionary,
     // include found header files needed?
     // include Json library, and where it is ?
+    // implement destructors
+    // provide copy (with constructor/assignment) or "clone" function
+    // use module (future)
 }
 
 impl CppProps {
@@ -108,11 +123,18 @@ impl CppProps {
         }
     }
 
-    pub fn get_dictionary_info(&self) -> (&'static str, &'static str) {
-        (
-            self.dictionary_type.get_include_file(),
-            self.dictionary_type.get_container(),
-        )
+    pub fn get_dictionary_info(&self, is_empty: bool) -> (&'static str, &'static str) {
+        if is_empty {
+            (
+                self.dictionary_type.get_include_file_set(),
+                self.dictionary_type.get_container_set(),
+            )
+        } else {
+            (
+                self.dictionary_type.get_include_file(),
+                self.dictionary_type.get_container(),
+            )
+        }
     }
 }
 

@@ -66,7 +66,7 @@ impl Target {
         out: &mut dyn Write,
         state: &mut <Target as jtd_codegen::target::Target>::FileState,
     ) -> jtd_codegen::Result<Option<String>> {
-        // sort the CppTypes
+        state.inspect();
 
         // start writing the functions, or could write everything in here instead
 
@@ -87,8 +87,11 @@ impl Target {
         out.write(self.props.get_guard().as_bytes())?;
         state.write_include_files(out)?;
 
+        state.write_forward_declarations(out)?;
+        state.write_alias(out)?;
         // ...
 
+        writeln!(out, "")?;
         out.write(self.props.get_footer().as_bytes())?;
         Ok(None)
     }
@@ -168,10 +171,7 @@ impl jtd_codegen::target::Target for Target {
                 name,
                 members,
             } => {
-                println!("-- Enum {}", name);
-                for member in &members {
-                    println!("   - n: {}, j: {}", member.name, member.json_value);
-                }
+                state.parse_enum(name, members, metadata);
                 Ok(None)
             }
             target::Item::Struct {
@@ -179,14 +179,20 @@ impl jtd_codegen::target::Target for Target {
                 name,
                 has_additional: _,
                 fields,
-            } => Ok(None),
+            } => {
+                state.parse_struct(name, fields, metadata);
+                Ok(None)
+            }
             target::Item::Discriminator {
                 metadata,
                 name,
                 variants,
                 tag_json_name,
                 tag_field_name,
-            } => Ok(None),
+            } => {
+                state.parse_discriminator(name, variants, tag_json_name, tag_field_name, metadata);
+                Ok(None)
+            }
             target::Item::DiscriminatorVariant {
                 metadata,
                 name,
@@ -195,8 +201,19 @@ impl jtd_codegen::target::Target for Target {
                 tag_json_name,
                 tag_value,
                 parent_name,
-                has_additional,
-            } => Ok(None),
+                has_additional: _,
+            } => {
+                state.parse_discriminator_variant(
+                    name,
+                    fields,
+                    tag_field_name,
+                    tag_json_name,
+                    tag_value,
+                    parent_name,
+                    metadata,
+                );
+                Ok(None)
+            }
         }
     }
 }
