@@ -79,6 +79,7 @@ pub struct CppProps {
     // implement destructors
     // provide copy (with constructor/assignment) or "clone" function
     // use module (future)
+    // identation: Space(#), Tabs ????
 }
 
 impl CppProps {
@@ -123,16 +124,17 @@ impl CppProps {
         }
     }
 
-    pub fn get_dictionary_info(&self, is_empty: bool) -> (&'static str, &'static str) {
-        if is_empty {
+    pub fn get_dictionary_info(&self, sub_type: &String) -> (&'static str, String) {
+        let dic = &self.dictionary_type;
+        if sub_type.is_empty() {
             (
-                self.dictionary_type.get_include_file_set(),
-                self.dictionary_type.get_container_set(),
+                dic.get_include_file_set(),
+                format!("{}<std::string>", dic.get_container_set()),
             )
         } else {
             (
-                self.dictionary_type.get_include_file(),
-                self.dictionary_type.get_container(),
+                dic.get_include_file(),
+                format!("{}<std::string, {}>", dic.get_container(), sub_type),
             )
         }
     }

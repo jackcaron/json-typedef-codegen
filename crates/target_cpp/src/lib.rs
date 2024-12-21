@@ -54,19 +54,17 @@ impl Target {
         format!("{}.hpp", self.root_name)
     }
 
-    fn write_preamble(&self, out: &mut dyn Write) -> jtd_codegen::Result<Option<String>> {
-        write_codegen_version(out)?;
-        writeln!(out, "#include \"{}\"", self.get_header_filename())?;
-        write!(out, "{}", self.props.open_namespace())?;
-        Ok(None)
-    }
-
-    fn write_postamble(
+    fn write_source_file(
         &self,
         out: &mut dyn Write,
         state: &mut <Target as jtd_codegen::target::Target>::FileState,
     ) -> jtd_codegen::Result<Option<String>> {
-        state.inspect();
+        let _ = state;
+        // state.inspect();
+
+        write_codegen_version(out)?;
+        writeln!(out, "#include \"{}\"", self.get_header_filename())?;
+        write!(out, "{}", self.props.open_namespace())?;
 
         // start writing the functions, or could write everything in here instead
 
@@ -84,15 +82,17 @@ impl Target {
 
         write_codegen_version(out)?;
 
-        out.write(self.props.get_guard().as_bytes())?;
-        state.write_include_files(out)?;
+        write!(
+            out,
+            "{}{}{}{}{}",
+            self.props.get_guard(),
+            state.write_include_files(),
+            state.write_forward_declarations(),
+            state.write_alias(),
+            state.declare(&self.props)
+        )?;
 
-        state.write_forward_declarations(out)?;
-        state.write_alias(out)?;
-        // ...
-
-        writeln!(out, "")?;
-        out.write(self.props.get_footer().as_bytes())?;
+        write!(out, "\n{}", self.props.get_footer())?;
         Ok(None)
     }
 }
@@ -155,8 +155,8 @@ impl jtd_codegen::target::Target for Target {
                 out_dir.join(self.get_header_filename().as_str()).as_path(),
                 state,
             ),
-            target::Item::Preamble => self.write_preamble(out),
-            target::Item::Postamble => self.write_postamble(out, state),
+            target::Item::Preamble => Ok(None),
+            target::Item::Postamble => self.write_source_file(out, state),
 
             target::Item::Alias {
                 metadata,
