@@ -4,6 +4,9 @@
 #include "array.hpp"
 #include "object.hpp"
 
+#include <cmath>
+#include <limits>
+
 using namespace std::string_view_literals;
 
 static constexpr JsonTypes map_napi_type(const napi_valuetype type) {
@@ -140,6 +143,35 @@ ExpType<JsonObject> NapiValue::read_object() const {
   } else {
     return NapiObject::create(m_value.As<Napi::Object>());
   }
+}
+
+NumberType NapiValue::get_number_type() const {
+  if (m_value.IsBigInt()) {
+    bool lossless = false;
+    if (m_value.As<Napi::BigInt>().Int64Value(&lossless); lossless) {
+      return NumberType::I64;
+    }
+
+    lossless = false;
+    if (m_value.As<Napi::BigInt>().Uint64Value(&lossless); lossless) {
+      return NumberType::U64;
+    }
+    return NumberType::Double;
+  } else if (m_value.IsNumber()) {
+    const auto dbl = m_value.ToNumber().DoubleValue();
+    double intpart = 0.0;
+    if (std::modf(dbl, &intpart) == 0.0) {
+      if (dbl < 0.0) {
+        if (dbl > double(std::numeric_limits<int64_t>::min())) {
+          return NumberType::I64;
+        }
+      } else if (dbl <= double(std::numeric_limits<uint64_t>::max())) {
+        return NumberType::U64;
+      }
+    }
+    return NumberType::Double;
+  }
+  return NumberType::NaN;
 }
 
 JsonValue NapiValue::create(const Napi::Value val) {

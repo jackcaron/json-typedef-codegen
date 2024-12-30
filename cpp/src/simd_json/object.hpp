@@ -2,13 +2,15 @@
 
 #include "../spec_reader.hpp"
 
+#include "simd_json/simdjson.h"
+
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Reader;
 
 using ObjIter = simdjson::ondemand::object_iterator;
 using ObjIterResult = simdjson::simdjson_result<ObjIter>;
 
-class SimdObjectIterator : public Specialization::ObjectIterator {
+class SimdObjectIterator final : public Specialization::ObjectIterator {
 private:
   ObjIterResult m_iter;
   ObjIter m_end;
@@ -25,7 +27,7 @@ public:
   static JsonObjectIterator create(ObjIterResult begin, ObjIter end);
 };
 
-class SimdObject : public Specialization::Object {
+class SimdObject final : public Specialization::Object {
 private:
   mutable simdjson::ondemand::object m_object;
 

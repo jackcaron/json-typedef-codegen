@@ -51,6 +51,8 @@ namespace JsonTypedefCodeGen::Reader::Specialization {
     virtual ExpType<std::string> read_str() const = 0;
     virtual ExpType<JsonArray> read_array() const = 0;
     virtual ExpType<JsonObject> read_object() const = 0;
+
+    virtual NumberType get_number_type() const = 0;
   };
 
 } // namespace JsonTypedefCodeGen::Reader::Specialization

@@ -6,7 +6,7 @@
 
 using namespace simdjson::ondemand;
 
-static constexpr JsonTypes map_simd_types(json_type type) {
+static constexpr JsonTypes map_simd_types(const json_type type) {
   switch (type) {
   case json_type::array:
     return JsonTypes::Array;
@@ -110,6 +110,16 @@ ExpType<JsonArray> SimdValue::read_array() const {
 
 ExpType<JsonObject> SimdValue::read_object() const {
   return map_simd_data(m_value.get_object()).transform(SimdObject::create);
+}
+
+NumberType SimdValue::get_number_type() const {
+  if (m_value.type() == json_type::number) {
+    if (m_value.is_integer()) {
+      return m_value.is_negative() ? NumberType::I64 : NumberType::U64;
+    }
+    return NumberType::Double;
+  }
+  return NumberType::NaN;
 }
 
 JsonValue SimdValue::create(simdjson::ondemand::value val) {

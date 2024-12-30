@@ -5,11 +5,7 @@
 #include <memory>
 #include <utility>
 
-#include "common.hpp"
-
-#ifdef USE_SIMD
-#include "simd_json/simdjson.h"
-#endif
+#include "json_data.hpp"
 
 namespace JsonTypedefCodeGen::Reader {
 
@@ -152,6 +148,8 @@ namespace JsonTypedefCodeGen::Reader {
     inline std::default_sentinel_t end() const {
       return std::default_sentinel_t{};
     }
+
+    ExpType<Data::JsonArray> clone() const;
   };
 
   class JsonObject {
@@ -174,6 +172,8 @@ namespace JsonTypedefCodeGen::Reader {
     inline std::default_sentinel_t end() const {
       return std::default_sentinel_t{};
     }
+
+    ExpType<Data::JsonObject> clone() const;
   };
 
   class JsonValue {
@@ -202,6 +202,8 @@ namespace JsonTypedefCodeGen::Reader {
     ExpType<std::string> read_str() const;
     ExpType<JsonArray> read_array() const;
     ExpType<JsonObject> read_object() const;
+
+    ExpType<Data::JsonValue> clone() const;
   };
 
 } // namespace JsonTypedefCodeGen::Reader

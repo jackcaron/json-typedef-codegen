@@ -42,6 +42,24 @@ namespace JsonTypedefCodeGen::Reader {
       return JsonValue(std::move(pimpl));
     }
 
+    static ExpType<Data::JsonValue> clone_number(const Value* val) {
+      constexpr auto conv = [](auto v) {
+        return Data::JsonValue(v);
+      };
+
+      switch (val->get_number_type()) {
+      case NumberType::Double:
+        return val->read_double().transform(conv);
+      case NumberType::I64:
+        return val->read_i64().transform(conv);
+      case NumberType::U64:
+        return val->read_u64().transform(conv);
+      case NumberType::NaN:
+      default:
+        return makeJsonError(JsonErrorTypes::WrongType);
+      }
+    }
+
     // - - -
     template <typename Base> struct Unbase;
     template <> struct Unbase<BaseArrayIterator> {
@@ -125,11 +143,44 @@ namespace JsonTypedefCodeGen::Reader {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonArrayIterator();
   }
 
+  DLL_PUBLIC ExpType<Data::JsonArray> JsonArray::clone() const {
+    Data::JsonArray result;
+    for (const auto& item : *this) {
+      if (!item.has_value()) [[unlikely]] {
+        return std::unexpected(item.error());
+      }
+
+      if (const auto tmp = item.value().clone(); tmp.has_value()) [[likely]] {
+        result.emplace_back(std::move(tmp.value()));
+      } else {
+        return std::unexpected(tmp.error());
+      }
+    }
+    return result;
+  }
+
   // ------------------------------------------
   JsonObject::JsonObject(Spec::ObjectPtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
   DLL_PUBLIC JsonObjectIterator JsonObject::begin() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->begin() : JsonObjectIterator();
+  }
+
+  DLL_PUBLIC ExpType<Data::JsonObject> JsonObject::clone() const {
+    Data::JsonObject result;
+    for (const auto& item : *this) {
+      if (!item.has_value()) [[unlikely]] {
+        return std::unexpected(item.error());
+      }
+
+      const auto& [key, val] = item.value();
+      if (const auto tmp = val.clone(); tmp.has_value()) [[likely]] {
+        result.insert({key, tmp.value()});
+      } else {
+        return std::unexpected(item.error());
+      }
+    }
+    return result;
   }
 
   // ------------------------------------------
@@ -166,6 +217,46 @@ namespace JsonTypedefCodeGen::Reader {
   }
   DLL_PUBLIC ExpType<JsonObject> JsonValue::read_object() const {
     return m_pimpl ? Spec::unbase(m_pimpl)->read_object() : noPimpl();
+  }
+
+  DLL_PUBLIC ExpType<Data::JsonValue> JsonValue::clone() const {
+    constexpr auto conv = [](auto v) {
+      return Data::JsonValue(v);
+    };
+
+    switch (get_type()) {
+    case JsonTypes::Null:
+      return Data::JsonValue(nullptr);
+
+    case JsonTypes::Bool:
+      return read_bool().transform(conv);
+
+    case JsonTypes::Number:
+      return clone_number(Spec::unbase(m_pimpl));
+
+    case JsonTypes::String:
+      return read_str().transform(conv);
+
+    case JsonTypes::Array: {
+      if (auto tmp = read_array(); tmp.has_value()) {
+        return tmp.value().clone();
+      } else {
+        return std::unexpected(tmp.error());
+      }
+    } break;
+
+    case JsonTypes::Object: {
+      if (auto tmp = read_object(); tmp.has_value()) {
+        return tmp.value().clone();
+      } else {
+        return std::unexpected(tmp.error());
+      }
+    } break;
+
+    default:
+      break;
+    }
+    return makeJsonError(JsonErrorTypes::Invalid);
   }
 
 } // namespace JsonTypedefCodeGen::Reader

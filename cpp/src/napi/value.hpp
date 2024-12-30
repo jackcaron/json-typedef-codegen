@@ -27,6 +27,8 @@ public:
   virtual ExpType<JsonArray> read_array() const override;
   virtual ExpType<JsonObject> read_object() const override;
 
+  virtual NumberType get_number_type() const override;
+
   static JsonValue create(const Napi::Value val);
 };
 

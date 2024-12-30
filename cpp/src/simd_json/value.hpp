@@ -2,10 +2,12 @@
 
 #include "../spec_reader.hpp"
 
+#include "simd_json/simdjson.h"
+
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Reader;
 
-class SimdValue : public Specialization::Value {
+class SimdValue final : public Specialization::Value {
 private:
   mutable simdjson::ondemand::value m_value;
 
@@ -24,6 +26,8 @@ public:
   virtual ExpType<std::string> read_str() const override;
   virtual ExpType<JsonArray> read_array() const override;
   virtual ExpType<JsonObject> read_object() const override;
+
+  virtual NumberType get_number_type() const override;
 
   static JsonValue create(simdjson::ondemand::value val);
 };

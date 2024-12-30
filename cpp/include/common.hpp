@@ -6,6 +6,14 @@
 
 namespace JsonTypedefCodeGen {
 
+  enum class NumberType {
+    Double,
+    U64,
+    I64,
+    NaN
+  };
+
+  // --------------------------------------
   enum class JsonTypes {
     Null,
     Bool,
