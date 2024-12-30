@@ -16,13 +16,15 @@ impl CppEnum {
     }
 
     fn declare(&self) -> String {
-        format!("\n{} {} {{\n", CppEnum::get_prefix(), self.name)
-            + &(self
-                .members
+        format!(
+            "\n{} {} {{\n{}}};\n",
+            CppEnum::get_prefix(),
+            self.name,
+            self.members
                 .iter()
                 .map(|m| format!("  {},\n", m.name))
-                .collect::<String>())
-            + &("};\n".to_string())
+                .collect::<String>()
+        )
     }
 }
 
@@ -39,13 +41,17 @@ impl CppStruct {
     }
 
     fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        format!("\n{} {} {{\n", CppStruct::get_prefix(), self.name)
-            + &((&self.fields)
+        let _ = cpp_props;
+        let _ = cpp_state;
+        format!(
+            "\n{} {} {{\n{}}};\n",
+            CppStruct::get_prefix(),
+            self.name,
+            (&self.fields)
                 .iter()
-                .enumerate()
-                .map(|(i, f)| format!("  {} {};\n", f.type_, f.name))
-                .collect::<String>())
-            + &("};\n".to_string())
+                .map(|f| format!("  {} {};\n", f.type_, f.name))
+                .collect::<String>()
+        )
     }
 }
 
@@ -70,7 +76,14 @@ impl CppDiscriminator {
     }
 
     fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        format!("\n{} {} {{\n", CppDiscriminator::get_prefix(), self.name) + &("};\n".to_string())
+        let _ = cpp_props;
+        let _ = cpp_state;
+        format!(
+            "\n{} {} {{\n{}}};\n",
+            CppDiscriminator::get_prefix(),
+            self.name,
+            "  // TODO discriminator\n"
+        )
     }
 }
 
@@ -91,11 +104,17 @@ impl CppDiscriminatorVariant {
     }
 
     fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+        let _ = cpp_props;
+        let _ = cpp_state;
         format!(
-            "\n{} {} {{\n",
+            "\n{} {} {{\n{}}};\n",
             CppDiscriminatorVariant::get_prefix(),
-            self.name
-        ) + &("};\n".to_string())
+            self.name,
+            (&self.fields)
+                .iter()
+                .map(|f| format!("  {} {};\n", f.type_, f.name))
+                .collect::<String>()
+        )
     }
 }
 
@@ -254,7 +273,7 @@ impl CppState {
             }
             target::Expr::Timestamp => {
                 // NOTHING FOR NOW, might have to include "chrono",
-                "timestamp".to_string() // dummy value
+                panic!("time stamps are not supported yet")
             }
             target::Expr::ArrayOf(sub_type) => {
                 let name = format!("std::vector<{}>", sub_type);
@@ -287,7 +306,11 @@ impl CppState {
                     }
                 }
             }
-            target::Expr::Empty => "".to_string(), // set to be empty or null
+            target::Expr::Empty => {
+                self.add_include_file("<optional>");
+                // How to do this?? cannot guarantee that the value will survive that long
+                "std::optional<JsonTypedefCodeGen::Reader::JsonValue>".to_string()
+            }
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
                 match self.cpp_type_indices.get(&name) {
