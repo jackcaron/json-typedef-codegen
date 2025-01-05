@@ -86,7 +86,7 @@ impl Target {
             out,
             "{}{}{}{}{}",
             self.props.get_guard(),
-            state.write_include_files(),
+            state.write_include_files(&self.props),
             state.write_forward_declarations(),
             state.write_alias(),
             state.declare(&self.props)

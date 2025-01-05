@@ -30,9 +30,9 @@ impl Guard {
 
 #[derive(Deserialize, Default)]
 enum Dictionary {
-    #[default]
     #[serde(rename = "unordered")]
     Unordered,
+    #[default]
     #[serde(rename = "ordered")]
     Ordered,
 }
@@ -65,6 +65,34 @@ impl Dictionary {
 }
 
 #[derive(Default, Deserialize)]
+enum JsonCodeGenInclude {
+    #[default]
+    #[serde(rename = "ignore")]
+    Ignore,
+    #[serde(rename = "local")]
+    Local,
+    #[serde(rename = "system")]
+    System,
+    #[serde(rename = "path")]
+    Path(String),
+}
+
+impl JsonCodeGenInclude {
+    pub fn get_header_file(&self, basename: &str) -> String {
+        let value = match self {
+            JsonCodeGenInclude::Ignore => None,
+            JsonCodeGenInclude::Local => Some(format!("\"{}\"", basename)),
+            JsonCodeGenInclude::System => Some(format!("<{}>", basename)),
+            JsonCodeGenInclude::Path(path) => Some(path.clone()),
+        };
+        match value {
+            None => String::new(),
+            Some(inc) => format!("#include {}\n", inc),
+        }
+    }
+}
+
+#[derive(Default, Deserialize)]
 pub struct CppProps {
     #[serde(rename = "guard")]
     guard: Option<Guard>,
@@ -74,6 +102,11 @@ pub struct CppProps {
 
     #[serde(rename = "dictionary_type", default)]
     dictionary_type: Dictionary,
+
+    #[serde(rename = "include_reader", default)]
+    include_reader: JsonCodeGenInclude,
+    #[serde(rename = "include_data", default)]
+    include_data: JsonCodeGenInclude,
     // include found header files needed?
     // include Json library, and where it is ?
     // implement destructors
@@ -111,6 +144,11 @@ impl CppProps {
         }
     }
 
+    pub fn get_codegen_includes(&self) -> String {
+        self.include_data.get_header_file("json_data.hpp")
+            + &self.include_reader.get_header_file("json_reader.hpp")
+    }
+
     pub fn from_file(filename: Option<&str>) -> anyhow::Result<CppProps> {
         match filename {
             Some(fname) => {
@@ -143,14 +181,22 @@ impl CppProps {
 // ------
 #[cfg(test)]
 mod tests {
-    use crate::props::{CppProps, Dictionary, Guard};
+    use crate::props::{CppProps, Dictionary, Guard, JsonCodeGenInclude};
 
     #[test]
     fn default() {
         let props = CppProps::default();
         assert_eq!(props.guard.is_none(), true);
         assert_eq!(props.namespace.is_none(), true);
-        assert_eq!(matches!(props.dictionary_type, Dictionary::Unordered), true);
+        assert_eq!(matches!(props.dictionary_type, Dictionary::Ordered), true);
+        assert_eq!(
+            matches!(props.include_data, JsonCodeGenInclude::Ignore),
+            true
+        );
+        assert_eq!(
+            matches!(props.include_reader, JsonCodeGenInclude::Ignore),
+            true
+        );
     }
 
     #[test]
@@ -200,5 +246,33 @@ mod tests {
         let props: CppProps = serde_json::from_str(json).unwrap();
         assert_eq!(matches!(props.dictionary_type, Dictionary::Ordered), true);
         assert_eq!(props.namespace.is_none(), true);
+    }
+
+    #[test]
+    fn uses_includes() {
+        let inc1 = r#"{"include_reader":"local","include_data":"system"}"#;
+        let inc2 = r#"{"include_data":{"path":"where/it/is"}}"#;
+
+        let props1: CppProps = serde_json::from_str(inc1).unwrap();
+        assert_eq!(
+            matches!(props1.include_reader, JsonCodeGenInclude::Local),
+            true
+        );
+        assert_eq!(
+            matches!(props1.include_data, JsonCodeGenInclude::System),
+            true
+        );
+        let props2: CppProps = serde_json::from_str(inc2).unwrap();
+        assert_eq!(
+            matches!(props2.include_reader, JsonCodeGenInclude::Ignore),
+            true
+        );
+        assert_eq!(
+            match props2.include_data {
+                JsonCodeGenInclude::Path(path) => path.eq("where/it/is"),
+                _ => false,
+            },
+            true
+        );
     }
 }

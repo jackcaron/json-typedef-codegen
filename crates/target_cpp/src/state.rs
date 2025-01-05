@@ -193,11 +193,12 @@ impl CppState {
         println!("-- inspect: DONE");
     }
 
-    pub fn write_include_files(&self) -> String {
-        (&self.include_files)
-            .iter()
-            .map(|h| format!("#include {}\n", h))
-            .collect()
+    pub fn write_include_files(&self, cpp_props: &CppProps) -> String {
+        cpp_props.get_codegen_includes()
+            + &((&self.include_files)
+                .iter()
+                .map(|h| format!("#include {}\n", h))
+                .collect::<String>())
     }
 
     pub fn write_forward_declarations(&self) -> String {
@@ -308,8 +309,7 @@ impl CppState {
             }
             target::Expr::Empty => {
                 self.add_include_file("<optional>");
-                // How to do this?? cannot guarantee that the value will survive that long
-                "std::optional<JsonTypedefCodeGen::Reader::JsonValue>".to_string()
+                "std::optional<JsonTypedefCodeGen::Data::JsonValue>".to_string()
             }
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
