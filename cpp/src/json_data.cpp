@@ -42,7 +42,28 @@ namespace {
 } // namespace
 
 namespace JsonTypedefCodeGen::Data {
+  // ----------------------
+  JsonArray::JsonArray()
+      : m_array(std::make_shared<Specialization::JsonArray>()) {}
+  JsonArray::JsonArray(Specialization::JsonArrayPtr array) : m_array(array) {}
+  JsonArray::~JsonArray() {}
 
+  Specialization::JsonArray& JsonArray::internal() { return *m_array; }
+  const Specialization::JsonArray& JsonArray::internal() const {
+    return *m_array;
+  }
+
+  JsonObject::JsonObject()
+      : m_object(std::make_shared<Specialization::JsonObject>()) {}
+  JsonObject::JsonObject(Specialization::JsonObjectPtr obj) : m_object(obj) {}
+  JsonObject::~JsonObject() {}
+
+  Specialization::JsonObject& JsonObject::internal() { return *m_object; }
+  const Specialization::JsonObject& JsonObject::internal() const {
+    return *m_object;
+  }
+
+  // ----------------------
   JsonValue::JsonValue(std::nullptr_t) {}
   JsonValue::JsonValue(const bool b) : m_value(b) {}
   JsonValue::JsonValue(const double d) : m_value(d) {}
@@ -51,11 +72,12 @@ namespace JsonTypedefCodeGen::Data {
   JsonValue::JsonValue(const std::string_view str)
       : m_value(std::string(str)) {}
   JsonValue::JsonValue(const std::string& str) : m_value(str) {}
-  JsonValue::JsonValue(const JsonArray& array) : m_value(array) {}
-  JsonValue::JsonValue(const JsonObject& object) : m_value(object) {}
+  JsonValue::JsonValue(const JsonArray& array) : m_value(array.m_array) {}
+  JsonValue::JsonValue(const JsonObject& object) : m_value(object.m_object) {}
   JsonValue::JsonValue(std::string&& str) : m_value(std::move(str)) {}
-  JsonValue::JsonValue(JsonArray&& array) : m_value(std::move(array)) {}
-  JsonValue::JsonValue(JsonObject&& object) : m_value(std::move(object)) {}
+  JsonValue::JsonValue(JsonArray&& array) : m_value(std::move(array.m_array)) {}
+  JsonValue::JsonValue(JsonObject&& object)
+      : m_value(std::move(object.m_object)) {}
   JsonValue::~JsonValue() {}
 
   //
@@ -96,12 +118,12 @@ namespace JsonTypedefCodeGen::Data {
   }
 
   JsonValue& JsonValue::operator=(const JsonArray& array) {
-    m_value = array;
+    m_value = array.m_array;
     return *this;
   }
 
   JsonValue& JsonValue::operator=(const JsonObject& object) {
-    m_value = object;
+    m_value = object.m_object;
     return *this;
   }
 
@@ -111,12 +133,12 @@ namespace JsonTypedefCodeGen::Data {
   }
 
   JsonValue& JsonValue::operator=(JsonArray&& array) {
-    m_value = std::move(array);
+    m_value = std::move(array.m_array);
     return *this;
   }
 
   JsonValue& JsonValue::operator=(JsonObject&& object) {
-    m_value = std::move(object);
+    m_value = std::move(object.m_object);
     return *this;
   }
 
@@ -140,18 +162,18 @@ namespace JsonTypedefCodeGen::Data {
     return NumberType::NaN;
   }
 
-  ExpType<bool> JsonValue::is_null() const {
+  bool JsonValue::is_null() const {
     return AllValuesTypes(m_value.index()) == AllValuesTypes::Null;
   }
 
-  ExpType<bool> JsonValue::read_bool() const {
+  std::optional<bool> JsonValue::read_bool() const {
     if (AllValuesTypes(m_value.index()) == AllValuesTypes::Bool) {
       return std::get<size_t(AllValuesTypes::Bool)>(m_value);
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<double> JsonValue::read_double() const {
+  std::optional<double> JsonValue::read_double() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
       return std::get<size_t(AllValuesTypes::Double)>(m_value);
@@ -162,10 +184,10 @@ namespace JsonTypedefCodeGen::Data {
     default:
       break;
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<uint64_t> JsonValue::read_u64() const {
+  std::optional<uint64_t> JsonValue::read_u64() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
       return std::get<size_t(AllValuesTypes::Double)>(m_value);
@@ -176,10 +198,10 @@ namespace JsonTypedefCodeGen::Data {
     default:
       break;
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<int64_t> JsonValue::read_i64() const {
+  std::optional<int64_t> JsonValue::read_i64() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
       return std::get<size_t(AllValuesTypes::Double)>(m_value);
@@ -190,32 +212,28 @@ namespace JsonTypedefCodeGen::Data {
     default:
       break;
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<std::string_view> JsonValue::read_str() const {
+  std::optional<std::string_view> JsonValue::read_str() const {
     if (AllValuesTypes(m_value.index()) == AllValuesTypes::String) {
       return std::get<size_t(AllValuesTypes::String)>(m_value);
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<const std::reference_wrapper<JsonArray>>
-  JsonValue::read_array() const {
+  std::optional<JsonArray> JsonValue::read_array() const {
     if (AllValuesTypes(m_value.index()) == AllValuesTypes::Array) {
-      auto ref = std::get<size_t(AllValuesTypes::Array)>(m_value);
-      return std::reference_wrapper<JsonArray>(ref);
+      return JsonArray(std::get<size_t(AllValuesTypes::Array)>(m_value));
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
-  ExpType<const std::reference_wrapper<JsonObject>>
-  JsonValue::read_object() const {
+  std::optional<JsonObject> JsonValue::read_object() const {
     if (AllValuesTypes(m_value.index()) == AllValuesTypes::Object) {
-      auto ref = std::get<size_t(AllValuesTypes::Object)>(m_value);
-      return std::reference_wrapper<JsonObject>(ref);
+      return JsonObject(std::get<size_t(AllValuesTypes::Object)>(m_value));
     }
-    return makeJsonError(JsonErrorTypes::WrongType);
+    return {};
   }
 
 } // namespace JsonTypedefCodeGen::Data

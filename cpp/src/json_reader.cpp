@@ -68,9 +68,15 @@ namespace JsonTypedefCodeGen::Reader {
     template <> struct Unbase<BaseObjectIterator> {
       using type = ObjectIterator;
     };
-    template <> struct Unbase<BaseArray> { using type = Array; };
-    template <> struct Unbase<BaseObject> { using type = Object; };
-    template <> struct Unbase<BaseValue> { using type = Value; };
+    template <> struct Unbase<BaseArray> {
+      using type = Array;
+    };
+    template <> struct Unbase<BaseObject> {
+      using type = Object;
+    };
+    template <> struct Unbase<BaseValue> {
+      using type = Value;
+    };
 
     template <typename Base, typename UnbaseT = Unbase<Base>::type>
     constexpr const UnbaseT* unbase(const std::unique_ptr<Base>& base) {
@@ -144,7 +150,8 @@ namespace JsonTypedefCodeGen::Reader {
   }
 
   DLL_PUBLIC ExpType<Data::JsonArray> JsonArray::clone() const {
-    Data::JsonArray result;
+    Data::JsonArray _result;
+    auto& result = _result.internal();
     for (const auto& item : *this) {
       if (!item.has_value()) [[unlikely]] {
         return std::unexpected(item.error());
@@ -156,7 +163,7 @@ namespace JsonTypedefCodeGen::Reader {
         return std::unexpected(tmp.error());
       }
     }
-    return result;
+    return _result;
   }
 
   // ------------------------------------------
@@ -167,7 +174,8 @@ namespace JsonTypedefCodeGen::Reader {
   }
 
   DLL_PUBLIC ExpType<Data::JsonObject> JsonObject::clone() const {
-    Data::JsonObject result;
+    Data::JsonObject _result;
+    auto& result = _result.internal();
     for (const auto& item : *this) {
       if (!item.has_value()) [[unlikely]] {
         return std::unexpected(item.error());
@@ -180,7 +188,7 @@ namespace JsonTypedefCodeGen::Reader {
         return std::unexpected(item.error());
       }
     }
-    return result;
+    return _result;
   }
 
   // ------------------------------------------

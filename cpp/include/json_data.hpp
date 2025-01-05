@@ -3,22 +3,90 @@
 #include "common.hpp"
 
 #include <cstdint>
-#include <functional>
-#include <unordered_map>
+#include <map>
+#include <memory>
+#include <optional>
 #include <variant>
 #include <vector>
+
+// Neutral JSON representation
+// To get full access to the JsonArray and JsonObject, use
+// the "internal" function to access its internal data structure
 
 namespace JsonTypedefCodeGen::Data {
 
   class JsonValue;
 
-  using JsonArray = std::vector<JsonValue>;
-  using JsonObject = std::unordered_map<std::string, JsonValue>;
+  namespace Specialization {
+    using JsonArray = std::vector<JsonValue>;
+    using JsonObject = std::map<std::string, JsonValue>;
+
+    using JsonArrayPtr = std::shared_ptr<JsonArray>;
+    using JsonObjectPtr = std::shared_ptr<JsonObject>;
+  } // namespace Specialization
+
+  class JsonArray {
+  private:
+    friend class JsonValue;
+
+    Specialization::JsonArrayPtr m_array;
+
+    JsonArray(Specialization::JsonArrayPtr array);
+
+  public:
+    JsonArray();
+    JsonArray(const JsonArray&) = default;
+    JsonArray(JsonArray&&) = default;
+    ~JsonArray();
+
+    JsonArray& operator=(const JsonArray&) = default;
+    JsonArray& operator=(JsonArray&&) = default;
+
+    inline auto begin() { return m_array->begin(); }
+    inline auto end() { return m_array->end(); }
+    inline auto begin() const { return m_array->begin(); }
+    inline auto end() const { return m_array->end(); }
+    inline auto empty() const { return m_array->empty(); }
+    inline auto size() const { return m_array->size(); }
+
+    Specialization::JsonArray& internal();
+    const Specialization::JsonArray& internal() const;
+  };
+
+  class JsonObject {
+  private:
+    friend class JsonValue;
+
+    Specialization::JsonObjectPtr m_object;
+
+    JsonObject(Specialization::JsonObjectPtr obj);
+
+  public:
+    JsonObject();
+    JsonObject(const JsonObject&) = default;
+    JsonObject(JsonObject&&) = default;
+    ~JsonObject();
+
+    JsonObject& operator=(const JsonObject&) = default;
+    JsonObject& operator=(JsonObject&&) = default;
+
+    inline auto begin() { return m_object->begin(); }
+    inline auto end() { return m_object->end(); }
+    inline auto begin() const { return m_object->begin(); }
+    inline auto end() const { return m_object->end(); }
+    inline auto empty() const { return m_object->empty(); }
+    inline auto size() const { return m_object->size(); }
+
+    Specialization::JsonObject& internal();
+    const Specialization::JsonObject& internal() const;
+  };
 
   class JsonValue {
   private:
-    using AllValues = std::variant<std::nullptr_t, bool, double, uint64_t,
-                                   int64_t, std::string, JsonArray, JsonObject>;
+    using AllValues =
+        std::variant<std::nullptr_t, bool, double, uint64_t, int64_t,
+                     std::string, Specialization::JsonArrayPtr,
+                     Specialization::JsonObjectPtr>;
 
     AllValues m_value;
 
@@ -58,14 +126,14 @@ namespace JsonTypedefCodeGen::Data {
     JsonTypes get_type() const;
     NumberType get_number_type() const;
 
-    ExpType<bool> is_null() const;
-    ExpType<bool> read_bool() const;
-    ExpType<double> read_double() const;
-    ExpType<uint64_t> read_u64() const;
-    ExpType<int64_t> read_i64() const;
-    ExpType<std::string_view> read_str() const;
-    ExpType<const std::reference_wrapper<JsonArray>> read_array() const;
-    ExpType<const std::reference_wrapper<JsonObject>> read_object() const;
+    bool is_null() const;
+    std::optional<bool> read_bool() const;
+    std::optional<double> read_double() const;
+    std::optional<uint64_t> read_u64() const;
+    std::optional<int64_t> read_i64() const;
+    std::optional<std::string_view> read_str() const;
+    std::optional<JsonArray> read_array() const;
+    std::optional<JsonObject> read_object() const;
   };
 
 } // namespace JsonTypedefCodeGen::Data
