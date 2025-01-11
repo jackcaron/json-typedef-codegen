@@ -59,14 +59,16 @@ impl Target {
         out: &mut dyn Write,
         state: &mut <Target as jtd_codegen::target::Target>::FileState,
     ) -> jtd_codegen::Result<Option<String>> {
-        let _ = state;
-        // state.inspect();
-
         write_codegen_version(out)?;
+
         writeln!(out, "#include \"{}\"", self.get_header_filename())?;
+        writeln!(out, "{}", state.write_src_include_files())?;
+        writeln!(out, "{}", state.write_internal_code())?;
         write!(out, "{}", self.props.open_namespace())?;
 
-        // start writing the functions, or could write everything in here instead
+        // some prefix, like using string view literals
+
+        write!(out, "{}", state.define(&self.props))?;
 
         writeln!(out, "{}", self.props.close_namespace())?;
         Ok(None)
@@ -84,15 +86,27 @@ impl Target {
 
         write!(
             out,
-            "{}{}{}{}{}",
+            "{}{}\n{}",
             self.props.get_guard(),
             state.write_include_files(&self.props),
-            state.write_forward_declarations(),
-            state.write_alias(),
-            state.declare(&self.props)
+            self.props.open_namespace()
         )?;
 
-        write!(out, "\n{}", self.props.get_footer())?;
+        write!(
+            out,
+            "{}{}{}{}",
+            state.write_forward_declarations(),
+            state.write_alias(),
+            state.declare(&self.props),
+            state.prototype(&self.props)
+        )?;
+
+        write!(
+            out,
+            "\n\n{}\n{}",
+            self.props.close_namespace(),
+            self.props.get_footer()
+        )?;
         Ok(None)
     }
 }

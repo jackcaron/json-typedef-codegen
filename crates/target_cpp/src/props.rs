@@ -23,7 +23,7 @@ impl Guard {
     fn get_footer(&self) -> String {
         match self {
             Guard::Pragma => String::new(),
-            Guard::Name(_) => "#endif\n".to_string(),
+            Guard::Name(_) => "\n#endif\n".to_string(),
         }
     }
 }
@@ -108,7 +108,6 @@ pub struct CppProps {
     #[serde(rename = "include_data", default)]
     include_data: JsonCodeGenInclude,
     // include found header files needed?
-    // include Json library, and where it is ?
     // implement destructors
     // provide copy (with constructor/assignment) or "clone" function
     // use module (future)

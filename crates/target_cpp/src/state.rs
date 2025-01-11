@@ -4,6 +4,21 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::props::CppProps;
 
+fn deserialize_name(name: &str) -> String {
+    format!("fromJson{}", name)
+}
+fn function_name(name: &str, full_ns: bool) -> String {
+    format!(
+        "ExpType<{}> {}(const {}Reader::JsonValue& value)",
+        name,
+        deserialize_name(name),
+        if full_ns { "JsonTypedefCodeGen::" } else { "" }
+    )
+}
+fn prototype_name(name: &str) -> String {
+    format!("\nJsonTypedefCodeGen::{};", function_name(name, true))
+}
+
 #[derive(Debug, PartialEq)]
 pub struct CppEnum {
     name: String,
@@ -15,6 +30,34 @@ impl CppEnum {
         "enum class"
     }
 
+    fn get_internal_code() -> &'static str {
+        r#"using namespace std::string_view_literals;
+
+namespace {
+
+ExpType<int> getEnumIndex(const Reader::JsonValue &value,
+                                const std::span<const std::string_view> entries,
+                                const std::string_view enumName) {
+  if (const auto str = value.read_str(); str.has_value()) {
+    const auto val = std::move(str.value());
+    for (int index = 0; const auto entry : entries) {
+      if (val == entry) {
+        return index;
+      }
+      ++index;
+    }
+    const auto err =
+        std::format("Invalid value \"{}\" for enum {}", val, enumName);
+    return makeJsonError(JsonErrorTypes::Invalid, err);
+  } else {
+    return std::unexpected(str.error());
+  }
+}
+
+}
+"#
+    }
+
     fn declare(&self) -> String {
         format!(
             "\n{} {} {{\n{}}};\n",
@@ -24,6 +67,61 @@ impl CppEnum {
                 .iter()
                 .map(|m| format!("  {},\n", m.name))
                 .collect::<String>()
+        )
+    }
+
+    fn prototype(&self) -> String {
+        prototype_name(&self.name)
+    }
+
+    fn create_json_str_array(&self) -> String {
+        let items = self
+            .members
+            .iter()
+            .enumerate()
+            .map(|(i, m)| {
+                let prefix = if i == 0 { "" } else { ", " };
+                format!("{}\n        \"{}\"sv", prefix, m.json_value)
+            })
+            .collect::<String>();
+        format!(
+            "constexpr std::array<std::string_view, {}> entries = {{{{ {}\n    }}}}",
+            self.members.len(),
+            items
+        )
+    }
+
+    fn create_switch(&self) -> String {
+        let clauses = self
+            .members
+            .iter()
+            .enumerate()
+            .map(|(i, m)| format!("        case {}: return {}::{};\n", i, self.name, m.name))
+            .collect::<String>();
+        format!(
+            r#"switch(idx) {{
+        default:
+{}      }}"#,
+            clauses
+        )
+    }
+
+    fn define(&self) -> String {
+        format!(
+            r#"
+{} {{
+  {};
+  return getEnumIndex(value, entries, "{}"sv)
+    .transform([](auto idx) {{
+      {}
+    }});
+}}
+
+"#,
+            function_name(&self.name, false),
+            self.create_json_str_array(),
+            self.name,
+            self.create_switch()
         )
     }
 }
@@ -52,6 +150,14 @@ impl CppStruct {
                 .map(|f| format!("  {} {};\n", f.type_, f.name))
                 .collect::<String>()
         )
+    }
+
+    fn prototype(&self) -> String {
+        prototype_name(&self.name)
+    }
+
+    fn define(&self) -> String {
+        format!("")
     }
 }
 
@@ -85,6 +191,14 @@ impl CppDiscriminator {
             "  // TODO discriminator\n"
         )
     }
+
+    fn prototype(&self) -> String {
+        prototype_name(&self.name)
+    }
+
+    fn define(&self) -> String {
+        format!("")
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -115,6 +229,14 @@ impl CppDiscriminatorVariant {
                 .map(|f| format!("  {} {};\n", f.type_, f.name))
                 .collect::<String>()
         )
+    }
+
+    fn prototype(&self) -> String {
+        prototype_name(&self.name)
+    }
+
+    fn define(&self) -> String {
+        format!("")
     }
 }
 
@@ -162,43 +284,71 @@ impl CppTypes {
             _ => String::new(),
         }
     }
+
+    fn prototype(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+        match &self {
+            CppTypes::Enum(cpp_enum) => cpp_enum.prototype(),
+            CppTypes::Struct(cpp_struct) => cpp_struct.prototype(),
+            CppTypes::Discriminator(cpp_dist) => cpp_dist.prototype(),
+            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.prototype(),
+            _ => String::new(),
+        }
+    }
+
+    fn define(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+        match &self {
+            CppTypes::Enum(cpp_enum) => cpp_enum.define(),
+            CppTypes::Struct(cpp_struct) => cpp_struct.define(),
+            CppTypes::Discriminator(cpp_dist) => cpp_dist.define(),
+            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.define(),
+            _ => String::new(),
+        }
+    }
 }
 
 #[derive(Default)]
 pub struct CppState {
     // - header files to include, ex.: optional, vector, string, ...
     include_files: BTreeSet<String>,
+    src_include_files: BTreeSet<String>, // header needed for the source file to work
 
     metadatas: Vec<Metadata>,
     names: Vec<String>,
     cpp_types: Vec<CppTypes>,
     cpp_type_indices: BTreeMap<String, usize>, // type name to index in "cpp_types"
+
+    requires_enum_internal_code: bool,
 }
 
 impl CppState {
-    pub fn inspect(&self) {
-        println!("-- inspect:");
-        if !self.include_files.is_empty() {
-            println!("  - include files:");
-            for f in &self.include_files {
-                println!("    - {}", f);
-            }
-        }
-        if !self.cpp_types.is_empty() {
-            println!("  - types:");
-            for (i, t) in (&self.cpp_types).into_iter().enumerate() {
-                println!("    - #{i} : {t:?}");
-            }
-        }
-        println!("-- inspect: DONE");
-    }
-
     pub fn write_include_files(&self, cpp_props: &CppProps) -> String {
         cpp_props.get_codegen_includes()
             + &((&self.include_files)
                 .iter()
                 .map(|h| format!("#include {}\n", h))
                 .collect::<String>())
+    }
+
+    pub fn write_src_include_files(&self) -> String {
+        // but exclude files already included in the header
+        self.src_include_files
+            .iter()
+            .filter_map(|h| {
+                if self.include_files.contains(h) {
+                    None
+                } else {
+                    Some(format!("#include {}\n", h))
+                }
+            })
+            .collect::<String>()
+    }
+
+    pub fn write_internal_code(&self) -> String {
+        let mut intern_code = "using namespace JsonTypedefCodeGen;\n".to_string();
+        if self.requires_enum_internal_code {
+            intern_code = intern_code + CppEnum::get_internal_code();
+        }
+        intern_code
     }
 
     pub fn write_forward_declarations(&self) -> String {
@@ -215,7 +365,7 @@ impl CppState {
                 if it.1.needs_forward_declaration() {
                     let n = &self.names[it.0];
                     let pre = it.1.type_prefix();
-                    let idx = (!first) as usize;
+                    let idx: usize = (!first) as usize;
                     first = false;
                     Some(format!("{}{} {};\n", PRE_DECL[idx], pre, n))
                 } else {
@@ -250,6 +400,21 @@ impl CppState {
                 .iter()
                 .map(|t| t.declare(self, cpp_props))
                 .collect::<String>())
+    }
+
+    pub fn prototype(&self, cpp_props: &CppProps) -> String {
+        "\n// prototypes".to_string()
+            + &(self.cpp_types)
+                .iter()
+                .map(|t| t.prototype(self, cpp_props))
+                .collect::<String>()
+    }
+
+    pub fn define(&self, cpp_props: &CppProps) -> String {
+        self.cpp_types
+            .iter()
+            .map(|t| t.define(self, cpp_props))
+            .collect::<String>()
     }
 
     pub fn parse_primitive(
@@ -341,6 +506,11 @@ impl CppState {
             name: name.clone(),
             members,
         });
+        self.requires_enum_internal_code = true;
+        self.add_src_include_file("<array>");
+        self.add_src_include_file("<format>");
+        self.add_src_include_file("<span>");
+        self.add_src_include_file("<string_view>");
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
@@ -462,6 +632,10 @@ impl CppState {
 
     fn add_include_file(&mut self, file: &str) -> bool {
         self.include_files.insert(file.to_string())
+    }
+
+    fn add_src_include_file(&mut self, file: &str) -> bool {
+        self.src_include_files.insert(file.to_string())
     }
 
     fn field_to_type_indices(&mut self, fields: &Vec<target::Field>) -> Vec<usize> {
