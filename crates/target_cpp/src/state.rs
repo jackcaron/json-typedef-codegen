@@ -2,309 +2,13 @@ use jtd_codegen::target;
 use jtd_codegen::target::metadata::Metadata;
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::props::CppProps;
-
-fn deserialize_name(name: &str) -> String {
-    format!("fromJson{}", name)
-}
-fn function_name(name: &str, full_ns: bool) -> String {
-    format!(
-        "ExpType<{}> {}(const {}Reader::JsonValue& value)",
-        name,
-        deserialize_name(name),
-        if full_ns { "JsonTypedefCodeGen::" } else { "" }
-    )
-}
-fn prototype_name(name: &str) -> String {
-    format!("\nJsonTypedefCodeGen::{};", function_name(name, true))
-}
-
-#[derive(Debug, PartialEq)]
-pub struct CppEnum {
-    name: String,
-    members: Vec<target::EnumMember>,
-}
-
-impl CppEnum {
-    fn get_prefix() -> &'static str {
-        "enum class"
-    }
-
-    fn get_internal_code() -> &'static str {
-        r#"using namespace std::string_view_literals;
-
-namespace {
-
-ExpType<int> getEnumIndex(const Reader::JsonValue &value,
-                                const std::span<const std::string_view> entries,
-                                const std::string_view enumName) {
-  if (const auto str = value.read_str(); str.has_value()) {
-    const auto val = std::move(str.value());
-    for (int index = 0; const auto entry : entries) {
-      if (val == entry) {
-        return index;
-      }
-      ++index;
-    }
-    const auto err =
-        std::format("Invalid value \"{}\" for enum {}", val, enumName);
-    return makeJsonError(JsonErrorTypes::Invalid, err);
-  } else {
-    return std::unexpected(str.error());
-  }
-}
-
-}
-"#
-    }
-
-    fn declare(&self) -> String {
-        format!(
-            "\n{} {} {{\n{}}};\n",
-            CppEnum::get_prefix(),
-            self.name,
-            self.members
-                .iter()
-                .map(|m| format!("  {},\n", m.name))
-                .collect::<String>()
-        )
-    }
-
-    fn prototype(&self) -> String {
-        prototype_name(&self.name)
-    }
-
-    fn create_json_str_array(&self) -> String {
-        let items = self
-            .members
-            .iter()
-            .enumerate()
-            .map(|(i, m)| {
-                let prefix = if i == 0 { "" } else { ", " };
-                format!("{}\n        \"{}\"sv", prefix, m.json_value)
-            })
-            .collect::<String>();
-        format!(
-            "constexpr std::array<std::string_view, {}> entries = {{{{ {}\n    }}}}",
-            self.members.len(),
-            items
-        )
-    }
-
-    fn create_switch(&self) -> String {
-        let clauses = self
-            .members
-            .iter()
-            .enumerate()
-            .map(|(i, m)| format!("        case {}: return {}::{};\n", i, self.name, m.name))
-            .collect::<String>();
-        format!(
-            r#"switch(idx) {{
-        default:
-{}      }}"#,
-            clauses
-        )
-    }
-
-    fn define(&self) -> String {
-        format!(
-            r#"
-{} {{
-  {};
-  return getEnumIndex(value, entries, "{}"sv)
-    .transform([](auto idx) {{
-      {}
-    }});
-}}
-
-"#,
-            function_name(&self.name, false),
-            self.create_json_str_array(),
-            self.name,
-            self.create_switch()
-        )
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct CppStruct {
-    name: String,
-    fields: Vec<target::Field>,
-    cpp_type_indices: Vec<usize>,
-}
-
-impl CppStruct {
-    fn get_prefix() -> &'static str {
-        "struct"
-    }
-
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
-        format!(
-            "\n{} {} {{\n{}}};\n",
-            CppStruct::get_prefix(),
-            self.name,
-            (&self.fields)
-                .iter()
-                .map(|f| format!("  {} {};\n", f.type_, f.name))
-                .collect::<String>()
-        )
-    }
-
-    fn prototype(&self) -> String {
-        prototype_name(&self.name)
-    }
-
-    fn define(&self) -> String {
-        format!("")
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct CppAlias {
-    name: String,
-    sub_type: String,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct CppDiscriminator {
-    name: String,
-    variants: Vec<target::DiscriminatorVariantInfo>,
-    tag_json_name: String,
-    tag_field_name: String,
-    cpp_type_indices: Vec<usize>,
-}
-
-impl CppDiscriminator {
-    fn get_prefix() -> &'static str {
-        "struct"
-    }
-
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
-        format!(
-            "\n{} {} {{\n{}}};\n",
-            CppDiscriminator::get_prefix(),
-            self.name,
-            "  // TODO discriminator\n"
-        )
-    }
-
-    fn prototype(&self) -> String {
-        prototype_name(&self.name)
-    }
-
-    fn define(&self) -> String {
-        format!("")
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub struct CppDiscriminatorVariant {
-    name: String,
-    fields: Vec<target::Field>,
-    tag_field_name: String,
-    tag_json_name: String,
-    tag_value: String,
-    parent_name: String,
-    cpp_type_indices: Vec<usize>,
-}
-
-impl CppDiscriminatorVariant {
-    fn get_prefix() -> &'static str {
-        "struct"
-    }
-
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
-        format!(
-            "\n{} {} {{\n{}}};\n",
-            CppDiscriminatorVariant::get_prefix(),
-            self.name,
-            (&self.fields)
-                .iter()
-                .map(|f| format!("  {} {};\n", f.type_, f.name))
-                .collect::<String>()
-        )
-    }
-
-    fn prototype(&self) -> String {
-        prototype_name(&self.name)
-    }
-
-    fn define(&self) -> String {
-        format!("")
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum CppTypes {
-    Incomplete,
-    Primitive(String),
-    Array(usize),
-    Dictionary(Option<usize>),
-    Nullable(usize),
-    Enum(CppEnum),
-    Struct(CppStruct),
-    Alias(CppAlias),
-    Discriminator(CppDiscriminator),
-    DiscriminatorVariant(CppDiscriminatorVariant),
-}
-
-impl CppTypes {
-    pub fn needs_forward_declaration(&self) -> bool {
-        match &self {
-            Self::Enum(_)
-            | Self::Struct(_)
-            | Self::Discriminator(_)
-            | Self::DiscriminatorVariant(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn type_prefix(&self) -> &'static str {
-        match &self {
-            Self::Enum(_) => CppEnum::get_prefix(),
-            Self::Struct(_) => CppStruct::get_prefix(),
-            Self::Discriminator(_) => CppDiscriminator::get_prefix(),
-            Self::DiscriminatorVariant(_) => CppDiscriminatorVariant::get_prefix(),
-            _ => panic!("type doesn't have a prefix"),
-        }
-    }
-
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.declare(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.declare(cpp_state, cpp_props),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.declare(cpp_state, cpp_props),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.declare(cpp_state, cpp_props),
-            _ => String::new(),
-        }
-    }
-
-    fn prototype(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.prototype(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.prototype(),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.prototype(),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.prototype(),
-            _ => String::new(),
-        }
-    }
-
-    fn define(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.define(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.define(),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.define(),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.define(),
-            _ => String::new(),
-        }
-    }
-}
+use crate::{
+    cpp_types::{
+        CppAlias, CppDiscriminator, CppDiscriminatorVariant, CppEnum, CppStruct, CppTypes,
+        Primitives,
+    },
+    props::CppProps,
+};
 
 #[derive(Default)]
 pub struct CppState {
@@ -344,11 +48,11 @@ impl CppState {
     }
 
     pub fn write_internal_code(&self) -> String {
-        let mut intern_code = "using namespace JsonTypedefCodeGen;\n".to_string();
+        let mut intern_code = "namespace {\n\nusing namespace JsonTypedefCodeGen;\n".to_string();
         if self.requires_enum_internal_code {
             intern_code = intern_code + CppEnum::get_internal_code();
         }
-        intern_code
+        intern_code + "\n} // namespace\n"
     }
 
     pub fn write_forward_declarations(&self) -> String {
@@ -384,10 +88,7 @@ impl CppState {
                 CppTypes::Alias(a) => {
                     let idx = (!first) as usize;
                     first = false;
-                    Some(format!(
-                        "{}using {} = {};\n",
-                        PRE_ALIAS[idx], a.name, a.sub_type
-                    ))
+                    Some(format!("{}{};\n", PRE_ALIAS[idx], a.format()))
                 }
                 _ => None,
             })
@@ -417,6 +118,22 @@ impl CppState {
             .collect::<String>()
     }
 
+    pub fn write_discriminators_footer(&self, cpp_props: &CppProps) -> String {
+        let footer = self
+            .cpp_types
+            .iter()
+            .filter_map(|t| match t {
+                CppTypes::Discriminator(d) => Some(d.write_access_functions(cpp_props)),
+                _ => None,
+            })
+            .collect::<String>();
+        if footer.is_empty() {
+            String::new()
+        } else {
+            format!("namespace std {{\n{}\n}} // namespace std", footer)
+        }
+    }
+
     pub fn parse_primitive(
         &mut self,
         expr: target::Expr,
@@ -424,18 +141,18 @@ impl CppState {
         meta: Metadata,
     ) -> String {
         match expr {
-            target::Expr::Boolean => self.add_primitive("bool", meta).0,
-            target::Expr::Int8 => self.add_primitive("uint8_t", meta).0,
-            target::Expr::Uint8 => self.add_primitive("uint8_t", meta).0,
-            target::Expr::Int16 => self.add_primitive("uint16_t", meta).0,
-            target::Expr::Uint16 => self.add_primitive("uint16_t", meta).0,
-            target::Expr::Int32 => self.add_primitive("uint32_t", meta).0,
-            target::Expr::Uint32 => self.add_primitive("uint32_t", meta).0,
-            target::Expr::Float32 => self.add_primitive("float", meta).0,
-            target::Expr::Float64 => self.add_primitive("double", meta).0,
+            target::Expr::Boolean => self.add_primitive(Primitives::Bool, meta).0,
+            target::Expr::Int8 => self.add_primitive(Primitives::Int8, meta).0,
+            target::Expr::Uint8 => self.add_primitive(Primitives::Uint8, meta).0,
+            target::Expr::Int16 => self.add_primitive(Primitives::Int16, meta).0,
+            target::Expr::Uint16 => self.add_primitive(Primitives::Uint16, meta).0,
+            target::Expr::Int32 => self.add_primitive(Primitives::Int32, meta).0,
+            target::Expr::Uint32 => self.add_primitive(Primitives::Uint32, meta).0,
+            target::Expr::Float32 => self.add_primitive(Primitives::Float32, meta).0,
+            target::Expr::Float64 => self.add_primitive(Primitives::Float64, meta).0,
             target::Expr::String => {
                 self.add_include_file("<string>");
-                self.add_primitive("std::string", meta).0
+                self.add_primitive(Primitives::String, meta).0
             }
             target::Expr::Timestamp => {
                 // NOTHING FOR NOW, might have to include "chrono",
@@ -494,18 +211,12 @@ impl CppState {
 
     pub fn parse_alias(&mut self, name: String, type_: String, meta: Metadata) {
         let (_, _) = self.add_incomplete(&type_);
-        let cpp_type = CppTypes::Alias(CppAlias {
-            name: name.clone(),
-            sub_type: type_.clone(),
-        });
+        let cpp_type = CppTypes::Alias(CppAlias::new(name.clone(), type_.clone()));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
     pub fn parse_enum(&mut self, name: String, members: Vec<target::EnumMember>, meta: Metadata) {
-        let cpp_type = CppTypes::Enum(CppEnum {
-            name: name.clone(),
-            members,
-        });
+        let cpp_type = CppTypes::Enum(CppEnum::new(name.clone(), members));
         self.requires_enum_internal_code = true;
         self.add_src_include_file("<array>");
         self.add_src_include_file("<format>");
@@ -516,11 +227,7 @@ impl CppState {
 
     pub fn parse_struct(&mut self, name: String, fields: Vec<target::Field>, meta: Metadata) {
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
-        let cpp_type = CppTypes::Struct(CppStruct {
-            name: name.clone(),
-            fields,
-            cpp_type_indices,
-        });
+        let cpp_type = CppTypes::Struct(CppStruct::new(name.clone(), fields, cpp_type_indices));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
@@ -536,13 +243,14 @@ impl CppState {
             .iter()
             .map(|v| self.add_incomplete(&v.type_name).1)
             .collect();
-        let cpp_type = CppTypes::Discriminator(CppDiscriminator {
-            name: name.clone(),
+        let cpp_type = CppTypes::Discriminator(CppDiscriminator::new(
+            name.clone(),
             variants,
             tag_json_name,
             tag_field_name,
             cpp_type_indices,
-        });
+        ));
+        self.add_include_file("<variant>");
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
@@ -557,15 +265,15 @@ impl CppState {
         meta: Metadata,
     ) {
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
-        let cpp_type = CppTypes::DiscriminatorVariant(CppDiscriminatorVariant {
-            name: name.clone(),
+        let cpp_type = CppTypes::DiscriminatorVariant(CppDiscriminatorVariant::new(
+            name.clone(),
             fields,
             tag_field_name,
             tag_json_name,
             tag_value,
             parent_name,
             cpp_type_indices,
-        });
+        ));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
@@ -616,9 +324,9 @@ impl CppState {
         }
     }
 
-    fn add_primitive(&mut self, name: &str, meta: Metadata) -> (String, usize) {
-        let sname = name.to_string();
-        let cpp_type = CppTypes::Primitive(sname.clone());
+    fn add_primitive(&mut self, prim: Primitives, meta: Metadata) -> (String, usize) {
+        let sname = prim.cpp_name().to_string();
+        let cpp_type = CppTypes::Primitive(prim);
         self.add_or_replace_cpp_type(sname, cpp_type, meta)
     }
 

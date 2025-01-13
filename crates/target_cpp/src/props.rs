@@ -143,6 +143,13 @@ impl CppProps {
         }
     }
 
+    pub fn get_namespaced_name(&self, name: &str) -> String {
+        match &self.namespace {
+            Some(ns) => format!("{}::{}", ns, name),
+            None => name.to_string(),
+        }
+    }
+
     pub fn get_codegen_includes(&self) -> String {
         self.include_data.get_header_file("json_data.hpp")
             + &self.include_reader.get_header_file("json_reader.hpp")
