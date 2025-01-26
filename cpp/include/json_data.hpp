@@ -3,6 +3,7 @@
 #include "common.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -135,5 +136,9 @@ namespace JsonTypedefCodeGen::Data {
     std::optional<JsonArray> read_array() const;
     std::optional<JsonObject> read_object() const;
   };
+
+  // For Discriminator types
+  template <typename Type> using RefW = std::reference_wrapper<Type>;
+  template <typename Type> using OptRefW = std::optional<RefW<Type>>;
 
 } // namespace JsonTypedefCodeGen::Data
