@@ -118,22 +118,6 @@ impl CppState {
             .collect::<String>()
     }
 
-    pub fn write_discriminators_footer(&self, cpp_props: &CppProps) -> String {
-        let footer = self
-            .cpp_types
-            .iter()
-            .filter_map(|t| match t {
-                CppTypes::Discriminator(d) => Some(d.write_access_functions(cpp_props)),
-                _ => None,
-            })
-            .collect::<String>();
-        if footer.is_empty() {
-            String::new()
-        } else {
-            format!("namespace std {{\n{}\n}} // namespace std", footer)
-        }
-    }
-
     pub fn parse_primitive(
         &mut self,
         expr: target::Expr,
@@ -250,7 +234,6 @@ impl CppState {
             tag_field_name,
             cpp_type_indices,
         ));
-        self.add_include_file("<variant>");
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 

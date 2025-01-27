@@ -103,11 +103,6 @@ impl Target {
         )?;
 
         write!(out, "\n\n{}", self.props.close_namespace())?;
-        write!(
-            out,
-            "\n\n{}",
-            state.write_discriminators_footer(&self.props)
-        )?;
         write!(out, "\n{}", self.props.get_footer())?;
         Ok(None)
     }
