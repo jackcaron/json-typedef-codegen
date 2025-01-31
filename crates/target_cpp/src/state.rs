@@ -4,8 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::{
     cpp_types::{
-        CppAlias, CppDiscriminator, CppDiscriminatorVariant, CppEnum, CppStruct, CppTypes,
-        Primitives,
+        CppAlias, CppArray, CppDict, CppDiscriminator, CppDiscriminatorVariant, CppEnum,
+        CppNullable, CppStruct, CppTypes, Primitives,
     },
     props::CppProps,
 };
@@ -22,9 +22,21 @@ pub struct CppState {
     cpp_type_indices: BTreeMap<String, usize>, // type name to index in "cpp_types"
 
     requires_enum_internal_code: bool,
+    require_set_internal_code: bool,
 }
 
 impl CppState {
+    pub fn get_index_from_name(&self, name: &String) -> Option<usize> {
+        match self.cpp_type_indices.get(name) {
+            Some(ridx) => Some(*ridx),
+            None => None,
+        }
+    }
+
+    pub fn get_cpp_type_from_index(&self, idx: usize) -> &CppTypes {
+        &(self.cpp_types[idx])
+    }
+
     pub fn write_include_files(&self, cpp_props: &CppProps) -> String {
         cpp_props.get_codegen_includes()
             + &((&self.include_files)
@@ -47,12 +59,37 @@ impl CppState {
             .collect::<String>()
     }
 
-    pub fn write_internal_code(&self) -> String {
-        let mut intern_code = "namespace {\n\nusing namespace JsonTypedefCodeGen;\n".to_string();
+    pub fn write_internal_code(&self, cpp_props: &CppProps) -> String {
+        let mut visited: Vec<bool> = vec![false; self.cpp_types.len()];
+        let type_internal_code = self
+            .cpp_types
+            .iter()
+            .enumerate()
+            .map(|(i, t)| {
+                if !visited[i] {
+                    visited[i] = true;
+                    t.get_internal_code(&self, &mut visited)
+                } else {
+                    String::new()
+                }
+            })
+            .collect::<String>();
+
+        if type_internal_code.is_empty()
+            && !self.requires_enum_internal_code
+            && !self.require_set_internal_code
+        {
+            return String::new();
+        }
+
+        let mut intern_code = "namespace {\n\nusing namespace JsonTypedefCodeGen;\nusing namespace std::string_view_literals;\n".to_string();
         if self.requires_enum_internal_code {
             intern_code = intern_code + CppEnum::get_internal_code();
         }
-        intern_code + "\n} // namespace\n"
+        if self.require_set_internal_code {
+            intern_code = intern_code + &CppDict::get_set_internal_function(cpp_props);
+        }
+        intern_code + &type_internal_code + "\n} // namespace\n"
     }
 
     pub fn write_forward_declarations(&self) -> String {
@@ -149,7 +186,7 @@ impl CppState {
                     None => {
                         self.add_include_file("<vector>");
                         let (_, sub_idx) = self.add_incomplete(&sub_type);
-                        let cpp_type = CppTypes::Array(sub_idx);
+                        let cpp_type = CppTypes::Array(CppArray::new(sub_idx, name.clone()));
                         self.add_or_replace_cpp_type(name, cpp_type, meta).0
                     }
                 }
@@ -163,12 +200,13 @@ impl CppState {
                         self.add_include_file(file);
 
                         let opt_sub = if sub_type.is_empty() {
+                            self.require_set_internal_code = true;
                             None
                         } else {
                             let (_, sub_idx) = self.add_incomplete(&sub_type);
                             Some(sub_idx)
                         };
-                        let cpp_type = CppTypes::Dictionary(opt_sub);
+                        let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub));
                         self.add_or_replace_cpp_type(name, cpp_type, meta).0
                     }
                 }
@@ -185,7 +223,7 @@ impl CppState {
                         self.add_include_file("<memory>");
 
                         let (_, sub_idx) = self.add_incomplete(&sub_type);
-                        let cpp_type = CppTypes::Nullable(sub_idx);
+                        let cpp_type = CppTypes::Nullable(CppNullable::new(sub_idx));
                         self.add_or_replace_cpp_type(name, cpp_type, meta).0
                     }
                 }

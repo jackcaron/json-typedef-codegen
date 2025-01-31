@@ -10,6 +10,7 @@ enum Guard {
     Pragma,
     #[serde(rename = "name")]
     Name(String),
+    // option to be the "output file name"
 }
 
 impl Guard {
@@ -168,7 +169,7 @@ impl CppProps {
         }
     }
 
-    pub fn get_dictionary_info(&self, sub_type: &String) -> (&'static str, String) {
+    pub fn get_dictionary_info(&self, sub_type: &str) -> (&'static str, String) {
         let dic = &self.dictionary_type;
         if sub_type.is_empty() {
             (

@@ -64,7 +64,7 @@ impl Target {
 
         writeln!(out, "#include \"{}\"", self.get_header_filename())?;
         writeln!(out, "{}", state.write_src_include_files())?;
-        writeln!(out, "{}", state.write_internal_code())?;
+        writeln!(out, "{}", state.write_internal_code(&self.props))?;
         write!(out, "{}", self.props.open_namespace())?;
 
         // some prefix, like using string view literals
