@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <iterator>
 #include <memory>
 #include <utility>
@@ -205,5 +206,67 @@ namespace JsonTypedefCodeGen::Reader {
 
     ExpType<Data::JsonValue> clone() const;
   };
+
+  // Transform Utils, when value.transform(...) returns an ExpType<ExpType<T>>
+  template <typename ResType>
+  constexpr ExpType<ResType>
+  flatten_expected_transform(ExpType<ExpType<ResType>>&& value) {
+    if (value.has_value()) {
+      if (auto tmp = std::move(value.value()); tmp.has_value()) {
+        return tmp.value();
+      } else {
+        return std::unexpected(tmp.error());
+      }
+    }
+    return std::unexpected(value.error());
+  }
+
+  constexpr ExpType<void>
+  flatten_expected_transform(ExpType<ExpType<void>>&& value) {
+    if (value.has_value()) {
+      if (auto tmp = std::move(value.value()); tmp.has_value()) {
+        return ExpType<void>();
+      } else {
+        return std::unexpected(tmp.error());
+      }
+    }
+    return std::unexpected(value.error());
+  }
+
+  // Iterator Utils, stop at the first error
+  ExpType<void>
+  json_array_for_each(const JsonValue& value,
+                      std::function<ExpType<void>(const JsonValue&)> cb) {
+    return flatten_expected_transform(
+        value.read_array().transform([&cb](auto array) -> ExpType<void> {
+          for (auto item : array) {
+            if (auto exp = flatten_expected_transform(item.transform(cb));
+                !exp.has_value()) {
+              return std::unexpected(exp.error());
+            }
+          }
+          return ExpType<void>();
+        }));
+  }
+
+  ExpType<void> json_object_for_each(
+      const JsonValue& value,
+      std::function<ExpType<void>(const std::string_view, const JsonValue&)>
+          cb) {
+    return flatten_expected_transform(
+        value.read_object().transform([&cb](auto object) -> ExpType<void> {
+          for (auto item : object) {
+            auto exp =
+                flatten_expected_transform(item.transform([&cb](auto& pair) {
+                  const auto [key, val] = std::move(pair);
+                  return cb(key, val);
+                }));
+            if (!exp.has_value()) {
+              return std::unexpected(exp.error());
+            }
+          }
+          return ExpType<void>();
+        }));
+  }
 
 } // namespace JsonTypedefCodeGen::Reader
