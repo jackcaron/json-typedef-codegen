@@ -72,4 +72,28 @@ namespace JsonTypedefCodeGen {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
 
+  // Expected Utils
+  template <typename ResType>
+  constexpr ExpType<ResType> flatten_expected(ExpType<ResType>&& value) {
+    return value;
+  }
+
+  template <typename ResType>
+  constexpr ExpType<ResType>
+  flatten_expected(ExpType<ExpType<ResType>>&& value) {
+    if (!value.has_value()) {
+      return UnexpJsonError(value.error());
+    }
+
+    if (auto tmp = std::move(value.value()); tmp.has_value()) {
+      if constexpr (std::is_void_v<ResType>) {
+        return tmp;
+      } else {
+        return flatten_expected(tmp.value());
+      }
+    } else {
+      return UnexpJsonError(tmp.error());
+    }
+  }
+
 } // namespace JsonTypedefCodeGen
