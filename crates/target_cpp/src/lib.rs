@@ -67,8 +67,6 @@ impl Target {
         writeln!(out, "{}", state.write_internal_code(&self.props))?;
         write!(out, "{}", self.props.open_namespace())?;
 
-        // some prefix, like using string view literals
-
         write!(out, "{}", state.define(&self.props))?;
 
         writeln!(out, "{}", self.props.close_namespace())?;

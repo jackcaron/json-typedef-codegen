@@ -10,6 +10,93 @@ use crate::{
     props::CppProps,
 };
 
+// internal code header
+const INTERNAL_CODE_HEADER: &'static str = r#"namespace {
+
+  using namespace JsonTypedefCodeGen;
+  using namespace std::string_view_literals;
+
+  template<typename Type> struct FromJson;
+
+  template <typename Type>
+  ExpType<void> convertAndSet(Type &dst, const Reader::JsonValue &value) {
+    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
+  }
+"#;
+
+const INTERNAL_CODE_ARRAY: &'static str = r#"
+  template<typename Type>
+  struct FromJson<std::vector<Type>> {
+    static ExpType<std::vector<Type>> convert(const Reader::JsonValue& value) {
+      auto converter = FromJson<Type>::convert;
+      std::vector<Type> result;
+      auto feach =
+        Reader::json_array_for_each(value, [&result](const auto &item) {
+          if (auto exp_res = converter(item); exp_res.has_value()) {
+            result.emplace_back(std::move(exp_res.value()));
+            return ExpType<void>();
+          } else {
+            return UnexpJsonError(exp_res.error());
+          }
+        });
+      return feach.transform([res = std::move(result)]() { return res; });
+    }
+  };
+"#;
+
+const INTERNAL_CODE_MAP: &'static str = r#"
+  template<typename Type>
+  struct FromJson<JsonMap<Type>> {
+    static ExpType<JsonMap<Type>> convert(const Reader::JsonValue& value) {
+      auto converter = FromJson<Type>::convert;
+      JsonMap<Type> result;
+      auto feach =
+        Reader::json_object_for_each(value, [&result](const auto key, const auto &val) {
+          if (auto exp_res = converter(val); exp_res.has_value()) {
+            auto [_iter, ok] = result.insert({ std::string(key), exp_res.value() });
+            if (ok) {
+              return ExpType<void>();
+            }
+            else {
+              const auto err = std::format("Duplicated key \"{}\"", key);
+              return UnexpJsonError(JsonErrorTypes::String, err);
+            }
+          }
+          else {
+            return UnexpJsonError(exp_res.error());
+          }
+        });
+      return feach.transform([res = std::move(result)]() { return res; });
+    }
+  };
+"#;
+
+fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
+    format!(
+        r#"
+  template<typename Type>
+  using JsonMap = {};
+    "#,
+        cpp_props.get_dictionary_info("Type").1
+    ) + &INTERNAL_CODE_MAP.to_string()
+}
+
+const INTERNAL_CODE_VALUE_INDEX: &'static str = r#"
+  ExpType<int> getValueIndex(const std::string_view value,
+                             const std::span<const std::string_view> entries,
+                             const std::string_view structName) {
+    for (int index = 0; const auto entry : entries) {
+      if (value == entry) {
+        return index;
+      }
+      ++index;
+    }
+    const auto err = std::format("Invalid key \"{}\" in {}",
+                                 value, structName);
+    return makeJsonError(JsonErrorTypes::Invalid, err);
+  }
+"#;
+
 #[derive(Default)]
 pub struct CppState {
     // - header files to include, ex.: optional, vector, string, ...
@@ -21,7 +108,11 @@ pub struct CppState {
     cpp_types: Vec<CppTypes>,
     cpp_type_indices: BTreeMap<String, usize>, // type name to index in "cpp_types"
 
-    requires_enum_internal_code: bool,
+    // internal code
+    require_get_enum_index_code: bool,
+    require_get_value_index_code: bool,
+    require_array_internal_code: bool,
+    require_map_internal_code: bool,
     require_set_internal_code: bool,
 }
 
@@ -60,34 +151,38 @@ impl CppState {
     }
 
     pub fn write_internal_code(&self, cpp_props: &CppProps) -> String {
-        let mut visited: Vec<bool> = vec![false; self.cpp_types.len()];
         let type_internal_code = self
             .cpp_types
             .iter()
             .enumerate()
-            .map(|(i, t)| {
-                if !visited[i] {
-                    visited[i] = true;
-                    t.get_internal_code(&self, &mut visited)
-                } else {
-                    String::new()
-                }
-            })
+            .map(|(i, t)| t.get_internal_code(&self, cpp_props))
             .collect::<String>();
 
         if type_internal_code.is_empty()
-            && !self.requires_enum_internal_code
+            && !self.require_get_enum_index_code
             && !self.require_set_internal_code
+            && !self.require_array_internal_code
+            && !self.require_map_internal_code
+            && !self.require_get_value_index_code
         {
             return String::new();
         }
 
-        let mut intern_code = "namespace {\n\nusing namespace JsonTypedefCodeGen;\nusing namespace std::string_view_literals;\n".to_string();
-        if self.requires_enum_internal_code {
-            intern_code = intern_code + CppEnum::get_internal_code();
+        let mut intern_code = INTERNAL_CODE_HEADER.to_string();
+        if self.require_get_enum_index_code {
+            intern_code = intern_code + CppEnum::get_enum_index_code();
+        }
+        if self.require_get_value_index_code {
+            intern_code = intern_code + &(INTERNAL_CODE_VALUE_INDEX.to_string());
         }
         if self.require_set_internal_code {
             intern_code = intern_code + &CppDict::get_set_internal_function(cpp_props);
+        }
+        if self.require_array_internal_code {
+            intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
+        }
+        if self.require_map_internal_code {
+            intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
         }
         intern_code + &type_internal_code + "\n} // namespace\n"
     }
@@ -181,6 +276,7 @@ impl CppState {
             }
             target::Expr::ArrayOf(sub_type) => {
                 let name = format!("std::vector<{}>", sub_type);
+                self.require_array_internal_code = true;
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
                     None => {
@@ -196,6 +292,7 @@ impl CppState {
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
                     None => {
+                        self.add_src_include_file("<format>");
                         self.add_include_file("<string>");
                         self.add_include_file(file);
 
@@ -204,6 +301,7 @@ impl CppState {
                             None
                         } else {
                             let (_, sub_idx) = self.add_incomplete(&sub_type);
+                            self.require_map_internal_code = true;
                             Some(sub_idx)
                         };
                         let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub));
@@ -231,6 +329,22 @@ impl CppState {
         }
     }
 
+    fn toggle_enum_index_code(&mut self) {
+        self.require_get_enum_index_code = true;
+        self.add_src_include_file("<array>");
+        self.add_src_include_file("<format>");
+        self.add_src_include_file("<span>");
+        self.add_src_include_file("<string_view>");
+    }
+
+    fn toggle_value_index_code(&mut self) {
+        self.require_get_value_index_code = true;
+        self.add_src_include_file("<array>");
+        self.add_src_include_file("<format>");
+        self.add_src_include_file("<span>");
+        self.add_src_include_file("<string_view>");
+    }
+
     pub fn parse_alias(&mut self, name: String, type_: String, meta: Metadata) {
         let (_, _) = self.add_incomplete(&type_);
         let cpp_type = CppTypes::Alias(CppAlias::new(name.clone(), type_.clone()));
@@ -239,16 +353,13 @@ impl CppState {
 
     pub fn parse_enum(&mut self, name: String, members: Vec<target::EnumMember>, meta: Metadata) {
         let cpp_type = CppTypes::Enum(CppEnum::new(name.clone(), members));
-        self.requires_enum_internal_code = true;
-        self.add_src_include_file("<array>");
-        self.add_src_include_file("<format>");
-        self.add_src_include_file("<span>");
-        self.add_src_include_file("<string_view>");
+        self.toggle_enum_index_code();
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
     pub fn parse_struct(&mut self, name: String, fields: Vec<target::Field>, meta: Metadata) {
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
+        self.toggle_value_index_code();
         let cpp_type = CppTypes::Struct(CppStruct::new(name.clone(), fields, cpp_type_indices));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
@@ -272,6 +383,7 @@ impl CppState {
             tag_field_name,
             cpp_type_indices,
         ));
+        self.toggle_value_index_code();
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
@@ -295,6 +407,7 @@ impl CppState {
             parent_name,
             cpp_type_indices,
         ));
+        self.toggle_value_index_code();
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 

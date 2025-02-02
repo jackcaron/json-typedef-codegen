@@ -139,7 +139,7 @@ impl CppProps {
 
     pub fn close_namespace(&self) -> String {
         match &self.namespace {
-            Some(ns) => format!("}} // namespace {}\n", ns),
+            Some(ns) => format!("\n}} // namespace {}\n", ns),
             None => String::new(),
         }
     }

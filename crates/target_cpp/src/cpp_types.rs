@@ -22,6 +22,18 @@ fn prototype_name(name: &str) -> String {
     format!("\nJsonTypedefCodeGen::{};", function_name(name, true))
 }
 
+fn get_complete_definition(name: &str) -> String {
+    format!(
+        r#"
+{} {{
+  return FromJson<{}>::convert(value);
+}}
+"#,
+        function_name(name, false),
+        name
+    )
+}
+
 #[derive(Debug, PartialEq)]
 pub struct CppEnum {
     name: String,
@@ -37,25 +49,26 @@ impl CppEnum {
         "enum class"
     }
 
-    pub fn get_internal_code() -> &'static str {
+    pub fn get_enum_index_code() -> &'static str {
         r#"
-ExpType<int> getEnumIndex(const Reader::JsonValue &value,
+  ExpType<int> getEnumIndex(const Reader::JsonValue &value,
                           const std::span<const std::string_view> entries,
                           const std::string_view enumName) {
-  if (const auto str = value.read_str(); str.has_value()) {
-    const auto val = std::move(str.value());
-    for (int index = 0; const auto entry : entries) {
-      if (val == entry) {
-        return index;
+    if (const auto str = value.read_str(); str.has_value()) {
+      const auto val = std::move(str.value());
+      for (int index = 0; const auto entry : entries) {
+        if (val == entry) {
+         return index;
+        }
+        ++index;
       }
-      ++index;
+      const auto err = std::format("Invalid value \"{}\" for {}",
+                                   value, enumName);
+      return makeJsonError(JsonErrorTypes::Invalid, err);
+    } else {
+      return std::unexpected(str.error());
     }
-    const auto err = std::format("Invalid value \"{}\" for {}", val, enumName);
-    return makeJsonError(JsonErrorTypes::Invalid, err);
-  } else {
-    return std::unexpected(str.error());
   }
-}
 "#
     }
 
@@ -75,8 +88,9 @@ ExpType<int> getEnumIndex(const Reader::JsonValue &value,
         prototype_name(&self.name)
     }
 
-    fn create_json_str_items(&self) -> String {
-        self.members
+    fn create_entry_array(&self) -> String {
+        let items = self
+            .members
             .iter()
             .enumerate()
             .map(|(i, m)| {
@@ -89,36 +103,51 @@ ExpType<int> getEnumIndex(const Reader::JsonValue &value,
                 };
                 format!("{}\"{}\"sv", prefix, m.json_value)
             })
-            .collect()
+            .collect::<String>();
+        format!(
+            r#"constexpr std::array<std::string_view, {}> entries = {{{{
+          {}
+        }}}};"#,
+            self.members.len(),
+            items
+        )
     }
 
     fn create_switch_clauses(&self) -> String {
         self.members
             .iter()
             .enumerate()
-            .map(|(i, m)| format!("        case {}: return {}::{};\n", i, self.name, m.name))
+            .map(|(i, m)| {
+                format!(
+                    "            case {}: return {}::{};\n",
+                    i, self.name, m.name
+                )
+            })
             .collect()
     }
 
-    fn define(&self) -> String {
+    fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
         format!(
             r#"
-{} {{
-  constexpr std::array<std::string_view, {}> entries = {{{{
-        {}
-      }}}};
-  return getEnumIndex(value, entries, "{}"sv)
-    .transform([](auto idx) {{
-      switch(idx) {{
-        default:
-{}     }}
-    }});
-}}
-
+  template<>
+  struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+      using {};
+      {}
+      return getEnumIndex(value, entries, "{}"sv)
+        .transform([](auto idx) {{
+          switch(idx) {{
+            default:
+{}        }}
+      }});
+    }}
+  }};
 "#,
-            function_name(&self.name, false),
-            self.members.len(),
-            self.create_json_str_items(),
+            fullname,
+            fullname,
+            fullname,
+            self.create_entry_array(),
             self.name,
             self.create_switch_clauses()
         )
@@ -167,8 +196,101 @@ impl CppStruct {
         prototype_name(&self.name)
     }
 
-    fn define(&self) -> String {
-        format!("")
+    fn create_entry_array(&self) -> String {
+        let items = self
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let prefix = if i == 0 {
+                    ""
+                } else if (i % 4) == 0 {
+                    ",\n        "
+                } else {
+                    ", "
+                };
+                format!("{}\"{}\"sv", prefix, f.json_name)
+            })
+            .collect::<String>();
+        format!(
+            r#"constexpr std::array<std::string_view, {}> entries = {{{{
+          {}
+        }}}};"#,
+            self.fields.len(),
+            items
+        )
+    }
+
+    fn create_visited_array(&self) -> String {
+        let falses = (0..self.fields.len())
+            .map(|i| {
+                let prefix = if i == 0 { "" } else { ", " };
+                format!("{}false", prefix)
+            })
+            .collect::<String>();
+        format!(
+            r#"std::array<bool, {}> visited = {{ {} }};"#,
+            self.fields.len(),
+            falses
+        )
+    }
+
+    fn create_switch_clauses(&self) -> String {
+        self.fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                format!(
+                    r#"
+              case {}: return convertAndSet(result.{}, val);"#,
+                    i, f.name
+                )
+            })
+            .collect::<String>()
+    }
+
+    fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let clauses = self.create_switch_clauses();
+        format!(
+            r#"
+  template<>
+  struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+      {}
+
+      {}
+      {} result;
+
+      auto feach = Reader::json_object_for_each(
+        value,
+        [&](const auto key, const auto &val) {{
+          return flatten_expected(
+            getValueIndex(key, entries, "{}"sv)
+            .transform([&](const int idx) -> ExpType<void> {{
+              if (visited[idx]) {{
+                const auto err = std::format("Duplicated key {{}}", key);
+                return makeJsonError(JsonErrorTypes::Invalid, err);
+              }}
+              visited[idx] = true;
+
+              switch (idx) {{
+              default:{}
+              }}
+            }}));
+        }});
+      return feach.transform([res = std::move(result)]() {{ return res; }});
+    }}
+  }};
+"#,
+            fullname,
+            fullname,
+            self.create_entry_array(),
+            self.create_visited_array(),
+            fullname,
+            self.name,
+            clauses
+        )
     }
 }
 
@@ -184,39 +306,6 @@ impl CppAlias {
     }
     pub fn format(&self) -> String {
         format!("using {} = {}", self.name, self.sub_type)
-    }
-
-    fn get_internal_function_name(&self, cpp_state: &CppState) -> String {
-        match cpp_state.get_index_from_name(&self.sub_type) {
-            Some(sidx) => cpp_state
-                .get_cpp_type_from_index(sidx)
-                .get_internal_function_name(cpp_state),
-            None => unreachable!(),
-        }
-    }
-
-    fn get_internal_function(&self, cpp_state: &CppState, visited: &mut Vec<bool>) -> String {
-        match cpp_state.get_index_from_name(&self.sub_type) {
-            Some(sidx) => {
-                if !visited[sidx] {
-                    visited[sidx] = true;
-                    let stype = cpp_state.get_cpp_type_from_index(sidx);
-                    stype.get_internal_code(cpp_state, visited)
-                } else {
-                    String::new()
-                }
-            }
-            None => unreachable!(),
-        }
-    }
-
-    fn formatted_name(&self, cpp_state: &CppState) -> String {
-        match cpp_state.get_index_from_name(&self.sub_type) {
-            Some(sidx) => cpp_state
-                .get_cpp_type_from_index(sidx)
-                .get_formatted_name(cpp_state),
-            None => unreachable!(),
-        }
     }
 }
 
@@ -349,8 +438,19 @@ public:
         prototype_name(&self.name)
     }
 
-    fn define(&self) -> String {
-        format!("")
+    fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        format!(
+            r#"
+  template<>
+  struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+      return makeJsonError(JsonErrorTypes::Unknown, "not implemented"sv);
+    }}
+  }};
+"#,
+            fullname, fullname
+        )
     }
 }
 
@@ -407,8 +507,19 @@ impl CppDiscriminatorVariant {
         prototype_name(&self.name)
     }
 
-    fn define(&self) -> String {
-        format!("")
+    fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        format!(
+            r#"
+  template<>
+  struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+      return makeJsonError(JsonErrorTypes::Unknown, "not implemented"sv);
+    }}
+  }};
+"#,
+            fullname, fullname
+        )
     }
 }
 
@@ -442,21 +553,6 @@ impl Primitives {
         }
     }
 
-    fn formatted_name(&self) -> &'static str {
-        match self {
-            Primitives::Bool => "Bool",
-            Primitives::Int8 => "I8",
-            Primitives::Uint8 => "U8",
-            Primitives::Int16 => "I16",
-            Primitives::Uint16 => "U16",
-            Primitives::Int32 => "I32",
-            Primitives::Uint32 => "U32",
-            Primitives::Float32 => "Float",
-            Primitives::Float64 => "Double",
-            Primitives::String => "String",
-        }
-    }
-
     fn read_primitive(&self, from: &str) -> String {
         let fn_name = match self {
             Primitives::Bool => "bool",
@@ -481,19 +577,19 @@ impl Primitives {
         }
     }
 
-    fn get_internal_function_name(&self) -> String {
-        format!("fromJson{}", self.formatted_name())
-    }
-
     fn get_internal_function(&self) -> String {
+        let typename = self.cpp_name();
         format!(
             r#"
-inline ExpType<{}> {}(const Reader::JsonValue& value) {{
-  return {}{};
-}}
+  template<>
+  struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue& value) {{
+      return {}{};
+    }}
+  }};
 "#,
-            self.cpp_name(),
-            self.get_internal_function_name(),
+            typename,
+            typename,
             self.read_primitive("value"),
             self.cpp_transform()
         )
@@ -509,46 +605,6 @@ impl CppArray {
     pub fn new(idx: TypeIndex, name: String) -> CppArray {
         CppArray(idx, name)
     }
-
-    fn formatted_name(&self, cpp_state: &CppState) -> String {
-        format!(
-            "ArrayOf{}",
-            cpp_state
-                .get_cpp_type_from_index(self.0)
-                .get_formatted_name(cpp_state)
-        )
-    }
-
-    fn get_internal_function_name(&self, cpp_state: &CppState) -> String {
-        format!("fromJson{}", self.formatted_name(cpp_state))
-    }
-
-    fn get_internal_function(&self, cpp_state: &CppState) -> String {
-        let sub_type_fn = cpp_state
-            .get_cpp_type_from_index(self.0)
-            .get_internal_function_name(cpp_state);
-        format!(
-            r#"
-ExpType<{}> {}(const Reader::JsonValue &value) {{
-  {} result;
-  return Reader::json_array_for_each(
-      value, [&result](const auto &item) {{
-        if (auto exp_res = {}(item); exp_res.has_value()) {{
-          result.emplace_back(std::move(exp_res.value()));
-          return ExpType<void>();
-        }}
-        else {{
-          std::unexpected(exp_res.error());
-        }}
-      }}).transform([&result]() {{ return result; }});
-}}
-"#,
-            self.1,
-            self.get_internal_function_name(cpp_state),
-            self.1,
-            sub_type_fn
-        )
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -559,39 +615,17 @@ impl CppDict {
         CppDict(opt_idx)
     }
 
-    fn formatted_name(&self, cpp_state: &CppState) -> String {
-        match &self.0 {
-            Some(idx) => format!(
-                "MapOf{}",
-                cpp_state
-                    .get_cpp_type_from_index(*idx)
-                    .get_formatted_name(cpp_state)
-            ),
-            None => "Set".to_string(),
-        }
-    }
-
-    fn get_internal_function_name(&self, cpp_state: &CppState) -> String {
-        format!("fromJson{}", self.formatted_name(cpp_state))
-    }
-
-    fn get_internal_function(&self, cpp_state: &CppState) -> String {
-        match &self.0 {
-            Some(idx) => todo!(),
-            None => String::new(), // handled by cpp_state
-        }
-    }
-
     pub fn get_set_internal_function(cpp_props: &CppProps) -> String {
-        let stype = cpp_props.get_dictionary_info("").1;
+        let settype = cpp_props.get_dictionary_info("").1;
         format!(
             r#"
-ExpType<{}> fromJsonSet(const Reader::JsonValue &value) {{
-  {} result;
-  return makeJsonError(JsonErrorTypes::Unknown, "not ready yet"sv); // probably just reading the keys, ignore the data
-}}
-        "#,
-            stype, stype
+  template<> struct FromJson<{}> {{
+    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+      return makeJsonError(JsonErrorTypes::Unknown, "not ready yet"sv); // probably just reading the keys, ignore the data
+    }}
+  }};
+"#,
+            settype, settype
         )
     }
 }
@@ -602,19 +636,6 @@ pub struct CppNullable(TypeIndex);
 impl CppNullable {
     pub fn new(idx: TypeIndex) -> CppNullable {
         CppNullable(idx)
-    }
-
-    fn formatted_name(&self, cpp_state: &CppState) -> String {
-        format!(
-            "Nullable{}",
-            cpp_state
-                .get_cpp_type_from_index(self.0)
-                .get_formatted_name(cpp_state)
-        )
-    }
-
-    fn get_internal_function_name(&self, cpp_state: &CppState) -> String {
-        format!("fromJson{}", self.formatted_name(cpp_state))
     }
 
     fn get_internal_function(&self, cpp_state: &CppState) -> String {
@@ -679,55 +700,30 @@ impl CppTypes {
 
     pub fn define(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
         match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.define(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.define(),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.define(),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.define(),
+            CppTypes::Enum(cpp_enum) => get_complete_definition(&cpp_enum.name),
+            CppTypes::Struct(cpp_struct) => get_complete_definition(&cpp_struct.name),
+            CppTypes::Discriminator(cpp_discriminator) => {
+                get_complete_definition(&cpp_discriminator.name)
+            }
+            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
+                get_complete_definition(&cpp_discriminator_variant.name)
+            }
             _ => String::new(),
         }
     }
 
-    fn get_formatted_name(&self, cpp_state: &CppState) -> String {
-        match self {
-            CppTypes::Incomplete => unreachable!(),
-            CppTypes::Primitive(p) => p.formatted_name().to_string(),
-            CppTypes::Array(cpp_array) => cpp_array.formatted_name(cpp_state),
-            CppTypes::Dictionary(cpp_dict) => cpp_dict.formatted_name(cpp_state),
-            CppTypes::Nullable(cpp_null) => cpp_null.formatted_name(cpp_state),
-            CppTypes::Enum(cpp_enum) => cpp_enum.name.clone(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.name.clone(),
-            CppTypes::Alias(cpp_alias) => cpp_alias.formatted_name(cpp_state),
-            CppTypes::Discriminator(cpp_discriminator) => cpp_discriminator.name.clone(),
-            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
-                cpp_discriminator_variant.name.clone()
-            }
-        }
-    }
-
-    fn get_internal_function_name(&self, cpp_state: &CppState) -> String {
-        match self {
-            CppTypes::Incomplete => unreachable!(),
-            CppTypes::Primitive(p) => p.get_internal_function_name(),
-            CppTypes::Array(cpp_array) => cpp_array.get_internal_function_name(cpp_state),
-            CppTypes::Dictionary(cpp_dict) => cpp_dict.get_internal_function_name(cpp_state),
-            CppTypes::Nullable(cpp_null) => cpp_null.get_internal_function_name(cpp_state),
-            CppTypes::Enum(cpp_enum) => deserialize_name(&cpp_enum.name),
-            CppTypes::Struct(cpp_struct) => deserialize_name(&cpp_struct.name),
-            CppTypes::Alias(cpp_alias) => cpp_alias.get_internal_function_name(cpp_state),
-            CppTypes::Discriminator(cpp_discriminator) => deserialize_name(&cpp_discriminator.name),
-            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
-                deserialize_name(&cpp_discriminator_variant.name)
-            }
-        }
-    }
-
-    pub fn get_internal_code(&self, cpp_state: &CppState, visited: &mut Vec<bool>) -> String {
+    pub fn get_internal_code(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
         match self {
             CppTypes::Primitive(p) => p.get_internal_function(),
-            CppTypes::Array(cpp_array) => cpp_array.get_internal_function(cpp_state),
-            CppTypes::Dictionary(cpp_dict) => cpp_dict.get_internal_function(cpp_state),
-            CppTypes::Nullable(cpp_null) => cpp_null.get_internal_function(cpp_state),
-            CppTypes::Alias(cpp_alias) => cpp_alias.get_internal_function(cpp_state, visited),
+            CppTypes::Enum(cpp_enum) => cpp_enum.get_internal_code(cpp_props),
+            CppTypes::Struct(cpp_struct) => cpp_struct.get_internal_code(cpp_props),
+            CppTypes::Discriminator(cpp_discriminator) => {
+                cpp_discriminator.get_internal_code(cpp_props)
+            }
+            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
+                cpp_discriminator_variant.get_internal_code(cpp_props)
+            }
+            // Nullable!!!
             _ => String::new(),
         }
     }
