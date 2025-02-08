@@ -34,6 +34,19 @@ fn get_complete_definition(name: &str) -> String {
     )
 }
 
+fn create_visited_array(sz: usize) -> String {
+    let falses = (0..sz)
+        .map(|i| {
+            let prefix = if i == 0 { "" } else { ", " };
+            format!("{}false", prefix)
+        })
+        .collect::<String>();
+    format!(
+        r#"std::array<bool, {}> visited = {{ false, {} }};"#,
+        sz, falses
+    )
+}
+
 #[derive(Debug, PartialEq)]
 pub struct CppEnum {
     name: String,
@@ -51,9 +64,10 @@ impl CppEnum {
 
     pub fn get_enum_index_code() -> &'static str {
         r#"
-  ExpType<int> getEnumIndex(const Reader::JsonValue &value,
-                          const std::span<const std::string_view> entries,
-                          const std::string_view enumName) {
+  template<typename JValue>
+  ExpType<int> getEnumIndex(const JValue &value,
+                            const std::span<const std::string_view> entries,
+                            const std::string_view enumName) {
     if (const auto str = value.read_str(); str.has_value()) {
       const auto val = std::move(str.value());
       for (int index = 0; const auto entry : entries) {
@@ -65,8 +79,15 @@ impl CppEnum {
       const auto err = std::format("Invalid value \"{}\" for {}",
                                    value, enumName);
       return makeJsonError(JsonErrorTypes::Invalid, err);
-    } else {
-      return std::unexpected(str.error());
+    }
+    else {
+      if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
+        const auto err = std::format("Not a string for {}", enumName);
+        return makeJsonError(JsonErrorTypes::Invalid, err);
+      }
+      else {
+        return std::unexpected(str.error());
+      }
     }
   }
 "#
@@ -105,7 +126,7 @@ impl CppEnum {
             })
             .collect::<String>();
         format!(
-            r#"constexpr std::array<std::string_view, {}> entries = {{{{
+            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
           {}
         }}}};"#,
             self.members.len(),
@@ -132,9 +153,11 @@ impl CppEnum {
             r#"
   template<>
   struct FromJson<{}> {{
-    static ExpType<{}> convert(const Reader::JsonValue &value) {{
+    {}
+
+    template<typename JValue>
+    static ExpType<{}> convert(const JValue &value) {{
       using {};
-      {}
       return getEnumIndex(value, entries, "{}"sv)
         .transform([](auto idx) {{
           switch(idx) {{
@@ -145,9 +168,9 @@ impl CppEnum {
   }};
 "#,
             fullname,
-            fullname,
-            fullname,
             self.create_entry_array(),
+            fullname,
+            fullname,
             self.name,
             self.create_switch_clauses()
         )
@@ -213,25 +236,11 @@ impl CppStruct {
             })
             .collect::<String>();
         format!(
-            r#"constexpr std::array<std::string_view, {}> entries = {{{{
+            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
           {}
         }}}};"#,
             self.fields.len(),
             items
-        )
-    }
-
-    fn create_visited_array(&self) -> String {
-        let falses = (0..self.fields.len())
-            .map(|i| {
-                let prefix = if i == 0 { "" } else { ", " };
-                format!("{}false", prefix)
-            })
-            .collect::<String>();
-        format!(
-            r#"std::array<bool, {}> visited = {{ {} }};"#,
-            self.fields.len(),
-            falses
         )
     }
 
@@ -242,7 +251,7 @@ impl CppStruct {
             .map(|(i, f)| {
                 format!(
                     r#"
-              case {}: return convertAndSet(result.{}, val);"#,
+                case {}: return convertAndSet(result.{}, val);"#,
                     i, f.name
                 )
             })
@@ -252,17 +261,19 @@ impl CppStruct {
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let clauses = self.create_switch_clauses();
+        let visited = create_visited_array(self.fields.len());
         format!(
             r#"
   template<>
   struct FromJson<{}> {{
-    static ExpType<{}> convert(const Reader::JsonValue &value) {{
-      {}
+    {}
 
+    template<typename JValue>
+    static ExpType<{}> convert(const JValue &value) {{
       {}
       {} result;
 
-      auto feach = Reader::json_object_for_each(
+      auto feach = json_object_for_each(
         value,
         [&](const auto key, const auto &val) {{
           return flatten_expected(
@@ -275,7 +286,7 @@ impl CppStruct {
               visited[idx] = true;
 
               switch (idx) {{
-              default:{}
+                default:{}
               }}
             }}));
         }});
@@ -284,9 +295,9 @@ impl CppStruct {
   }};
 "#,
             fullname,
-            fullname,
             self.create_entry_array(),
-            self.create_visited_array(),
+            fullname,
+            visited,
             fullname,
             self.name,
             clauses
@@ -438,18 +449,88 @@ public:
         prototype_name(&self.name)
     }
 
+    fn create_entry_array(&self) -> String {
+        let items = self
+            .variants
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                let prefix = if i == 0 {
+                    ""
+                } else if (i % 4) == 0 {
+                    ",\n          "
+                } else {
+                    ", "
+                };
+                format!("{}\"{}\"sv", prefix, v.tag_value)
+            })
+            .collect::<String>();
+        format!(
+            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
+          {}
+        }}}};"#,
+            self.variants.len(),
+            items
+        )
+    }
+
+    fn create_switch_clauses(&self) -> String {
+        self.variants
+            .iter()
+            .enumerate()
+            .map(|(i, v)| {
+                format!(
+                    r#"
+                case {}: return FromJson<{}>::convert(object).transform(toDisc);"#,
+                    i, v.type_name
+                )
+            })
+            .collect::<String>()
+    }
+
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
+        let clauses = self.create_switch_clauses();
         format!(
             r#"
   template<>
   struct FromJson<{}> {{
-    static ExpType<{}> convert(const Reader::JsonValue &value) {{
-      return makeJsonError(JsonErrorTypes::Unknown, "not implemented"sv);
+    using Disc = {};
+    {}
+
+    static ExpType<Disc> convert(const Data::JsonValue &value) {{
+      auto exp_obj = optionalToExpType(value.read_object(), JsonErrorTypes::Invalid, "not an object"sv);
+
+      return flatten_expected(
+        exp_obj.transform([](Data::JsonObject object) {{
+          auto& inner = object.internal();
+          const auto fnd = inner.find(std::string("{}"sv));
+          if (fnd == inner.end()) {{
+            return makeJsonError(JsonErrorTypes::Invalid, "missing key \"{}\" for {}"sv);
+          }}
+
+          return getValueIndex(fnd->second, entries, "{}"sv)
+            .transform([&object](int idx) {{
+              constexpr auto toDisc = [](auto v) {{ return Disc(v); }};
+              switch (idx) {{
+                default:{}
+              }}
+            }});
+        }}));
+    }}
+    static ExpType<Disc> convert(const Reader::JsonValue &value) {{
+      return flatten_expected(value.clone().transform(FromJson<Disc>::convert));
     }}
   }};
 "#,
-            fullname, fullname
+            fullname,
+            fullname,
+            self.create_entry_array(),
+            self.tag_field_name,
+            self.tag_field_name,
+            self.name,
+            fullname,
+            clauses
         )
     }
 }
@@ -485,6 +566,7 @@ impl CppDiscriminatorVariant {
             cpp_type_indices,
         }
     }
+
     fn get_prefix() -> &'static str {
         "struct"
     }
@@ -507,18 +589,86 @@ impl CppDiscriminatorVariant {
         prototype_name(&self.name)
     }
 
+    fn create_entry_array(&self) -> String {
+        let items = self
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let prefix = if i == 0 {
+                    ""
+                } else if (i % 5) == 0 {
+                    ",\n        "
+                } else {
+                    ", "
+                };
+                format!("{}\"{}\"sv", prefix, f.json_name)
+            })
+            .collect::<String>();
+        format!(
+            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
+          "{}"sv, {}
+        }}}};"#,
+            self.fields.len() + 1,
+            self.tag_json_name,
+            items
+        )
+    }
+
+    fn create_switch_clauses(&self) -> String {
+        self.fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                format!(
+                    r#"
+                  case {}: convertAndSet(result.{}, val); break;"#,
+                    i + 1,
+                    f.name
+                )
+            })
+            .collect::<String>()
+    }
+
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
+        let visited = create_visited_array(self.fields.len() + 1);
         format!(
             r#"
   template<>
   struct FromJson<{}> {{
-    static ExpType<{}> convert(const Reader::JsonValue &value) {{
-      return makeJsonError(JsonErrorTypes::Unknown, "not implemented"sv);
+    using Vary = {};
+    {}
+
+    template<typename JValue>
+    static ExpType<Vary> convert(const JValue &object) {{
+      Vary result;
+      auto feach = json_object_for_each(object, [&result](auto key, auto val) {{
+          {}
+          return getValueIndex(key, entries, "{}"sv)
+            .transform([&](int idx) -> ExpType<void> {{
+                if (!visited[idx]) {{
+                  const auto err = std::format("Duplicated key {{}}", key);
+                  return makeJsonError(JsonErrorTypes::Invalid, err);
+                }}
+                visited[idx] = true;
+
+                switch (idx) {{
+                  default:
+                  case 0: break; // discriminator{}
+                }}
+            }});
+        }});
+      return feach.transform([res = std::move(result)]() {{ return res; }});
     }}
   }};
 "#,
-            fullname, fullname
+            fullname,
+            fullname,
+            self.create_entry_array(),
+            visited,
+            self.name,
+            self.create_switch_clauses()
         )
     }
 }
@@ -564,7 +714,7 @@ impl Primitives {
         format!("{}.read_{}()", from, fn_name)
     }
 
-    fn cpp_transform(&self) -> String {
+    fn cpp_reader_transform(&self) -> String {
         match self {
             // no need to transform the value
             Primitives::Bool | Primitives::Float64 | Primitives::String => String::new(),
@@ -577,6 +727,15 @@ impl Primitives {
         }
     }
 
+    fn cpp_data_transform(&self) -> String {
+        match self {
+            Primitives::String => {
+                "\n        .transform([](auto v) { return std::string(v); })".to_string()
+            }
+            _ => String::new(),
+        }
+    }
+
     fn get_internal_function(&self) -> String {
         let typename = self.cpp_name();
         format!(
@@ -586,12 +745,19 @@ impl Primitives {
     static ExpType<{}> convert(const Reader::JsonValue& value) {{
       return {}{};
     }}
+    static ExpType<{}> convert(const Data::JsonValue& value) {{
+      return optionalToExpType({}, JsonErrorTypes::Invalid, "not a {}"sv){};
+    }}
   }};
 "#,
             typename,
             typename,
             self.read_primitive("value"),
-            self.cpp_transform()
+            self.cpp_reader_transform(),
+            typename,
+            self.read_primitive("value"),
+            self.cpp_name(),
+            self.cpp_data_transform()
         )
     }
 

@@ -22,16 +22,53 @@ const INTERNAL_CODE_HEADER: &'static str = r#"namespace {
   ExpType<void> convertAndSet(Type &dst, const Reader::JsonValue &value) {
     return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
   }
+
+  template <typename Type>
+  ExpType<void> convertAndSet(Type &dst, const Data::JsonValue &value) {
+    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
+  }
+
+  template <typename Type>
+  ExpType<Type> optionalToExpType(const std::optional<Type> &opt,
+                                  const JsonErrorTypes errtype,
+                                  const std::string_view msg) {
+    if (opt.has_value()) {
+      return *opt;
+    }
+    return makeJsonError(errtype, msg);
+  }
+"#;
+
+const INTERNAL_CODE_RAW_JSON_DATA: &'static str = r#"
+  template<>
+  struct FromJson<Data::JsonValue> {
+    static ExpType<Data::JsonValue> convert(const Reader::JsonValue& v) {
+      return v.clone();
+    }
+    static ExpType<Data::JsonValue> convert(const Data::JsonValue& v) {
+      return v;
+    }
+  };
 "#;
 
 const INTERNAL_CODE_ARRAY: &'static str = r#"
+  template <typename JValue, typename Cb>
+  auto json_array_for_each(const JValue &value, Cb cb) {
+    if constexpr (std::is_same_v<JValue, Reader::JsonValue>) {
+      return Reader::json_array_for_each(value, cb);
+    } else if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
+      return Data::json_array_for_each(value, cb);
+    }
+  }
+
   template<typename Type>
   struct FromJson<std::vector<Type>> {
-    static ExpType<std::vector<Type>> convert(const Reader::JsonValue& value) {
+    template<typename JValue>
+    static ExpType<std::vector<Type>> convert(const JValue& value) {
       auto converter = FromJson<Type>::convert;
       std::vector<Type> result;
       auto feach =
-        Reader::json_array_for_each(value, [&result](const auto &item) {
+        json_array_for_each(value, [&result](const auto &item) {
           if (auto exp_res = converter(item); exp_res.has_value()) {
             result.emplace_back(std::move(exp_res.value()));
             return ExpType<void>();
@@ -45,13 +82,23 @@ const INTERNAL_CODE_ARRAY: &'static str = r#"
 "#;
 
 const INTERNAL_CODE_MAP: &'static str = r#"
+  template <typename JValue, typename Cb>
+  auto json_object_for_each(const JValue &value, Cb cb) {
+    if constexpr (std::is_same_v<JValue, Reader::JsonValue>) {
+      return Reader::json_object_for_each(value, cb);
+    } else if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
+      return Data::json_object_for_each(value, cb);
+    }
+  }
+
   template<typename Type>
   struct FromJson<JsonMap<Type>> {
-    static ExpType<JsonMap<Type>> convert(const Reader::JsonValue& value) {
+    template <typename JValue>
+    static ExpType<JsonMap<Type>> convert(const JValue& value) {
       auto converter = FromJson<Type>::convert;
       JsonMap<Type> result;
       auto feach =
-        Reader::json_object_for_each(value, [&result](const auto key, const auto &val) {
+        json_object_for_each(value, [&result](const auto key, const auto &val) {
           if (auto exp_res = converter(val); exp_res.has_value()) {
             auto [_iter, ok] = result.insert({ std::string(key), exp_res.value() });
             if (ok) {
@@ -76,15 +123,16 @@ fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
         r#"
   template<typename Type>
   using JsonMap = {};
-    "#,
-        cpp_props.get_dictionary_info("Type").1
-    ) + &INTERNAL_CODE_MAP.to_string()
+    {}"#,
+        cpp_props.get_dictionary_info("Type").1,
+        INTERNAL_CODE_MAP
+    )
 }
 
 const INTERNAL_CODE_VALUE_INDEX: &'static str = r#"
-  ExpType<int> getValueIndex(const std::string_view value,
-                             const std::span<const std::string_view> entries,
-                             const std::string_view structName) {
+  constexpr ExpType<int> getValueIndex(const std::string_view value,
+                                       const std::span<const std::string_view> entries,
+                                       const std::string_view structName) {
     for (int index = 0; const auto entry : entries) {
       if (value == entry) {
         return index;
@@ -114,6 +162,7 @@ pub struct CppState {
     require_array_internal_code: bool,
     require_map_internal_code: bool,
     require_set_internal_code: bool,
+    require_json_raw_data_internal_code: bool,
 }
 
 impl CppState {
@@ -164,11 +213,14 @@ impl CppState {
             && !self.require_array_internal_code
             && !self.require_map_internal_code
             && !self.require_get_value_index_code
+            && !self.require_json_raw_data_internal_code
         {
             return String::new();
         }
 
-        let mut intern_code = INTERNAL_CODE_HEADER.to_string();
+        let mut intern_code = INTERNAL_CODE_HEADER.to_string()
+            + &(INTERNAL_CODE_ARRAY.to_string())
+            + &get_from_json_dictionary_converter(cpp_props);
         if self.require_get_enum_index_code {
             intern_code = intern_code + CppEnum::get_enum_index_code();
         }
@@ -178,11 +230,14 @@ impl CppState {
         if self.require_set_internal_code {
             intern_code = intern_code + &CppDict::get_set_internal_function(cpp_props);
         }
-        if self.require_array_internal_code {
-            intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
-        }
-        if self.require_map_internal_code {
-            intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
+        // if self.require_array_internal_code {
+        //     intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
+        // }
+        // if self.require_map_internal_code {
+        //     intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
+        // }
+        if self.require_json_raw_data_internal_code {
+            intern_code = intern_code + &INTERNAL_CODE_RAW_JSON_DATA.to_string();
         }
         intern_code + &type_internal_code + "\n} // namespace\n"
     }
@@ -311,6 +366,7 @@ impl CppState {
             }
             target::Expr::Empty => {
                 self.add_include_file("<optional>");
+                self.require_json_raw_data_internal_code = true;
                 "std::optional<JsonTypedefCodeGen::Data::JsonValue>".to_string()
             }
             target::Expr::NullableOf(sub_type) => {
