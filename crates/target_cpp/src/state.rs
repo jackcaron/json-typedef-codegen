@@ -11,33 +11,8 @@ use crate::{
 };
 
 // internal code header
-const INTERNAL_CODE_HEADER: &'static str = r#"namespace {
-
-  using namespace JsonTypedefCodeGen;
-  using namespace std::string_view_literals;
-
-  template<typename Type> struct FromJson;
-
-  template <typename Type>
-  ExpType<void> convertAndSet(Type &dst, const Reader::JsonValue &value) {
-    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
-  }
-
-  template <typename Type>
-  ExpType<void> convertAndSet(Type &dst, const Data::JsonValue &value) {
-    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
-  }
-
-  template <typename Type>
-  ExpType<Type> optionalToExpType(const std::optional<Type> &opt,
-                                  const JsonErrorTypes errtype,
-                                  const std::string_view msg) {
-    if (opt.has_value()) {
-      return *opt;
-    }
-    return makeJsonError(errtype, msg);
-  }
-"#;
+const INTERNAL_CODE_HEADER: &'static str =
+    include_str!("./cpp_snippets/internal_code_ns_header.cpp");
 
 const INTERNAL_CODE_RAW_JSON_DATA: &'static str = r#"
   template<>
@@ -51,72 +26,8 @@ const INTERNAL_CODE_RAW_JSON_DATA: &'static str = r#"
   };
 "#;
 
-const INTERNAL_CODE_ARRAY: &'static str = r#"
-  template <typename JValue, typename Cb>
-  auto json_array_for_each(const JValue &value, Cb cb) {
-    if constexpr (std::is_same_v<JValue, Reader::JsonValue>) {
-      return Reader::json_array_for_each(value, cb);
-    } else if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
-      return Data::json_array_for_each(value, cb);
-    }
-  }
-
-  template<typename Type>
-  struct FromJson<std::vector<Type>> {
-    template<typename JValue>
-    static ExpType<std::vector<Type>> convert(const JValue& value) {
-      auto converter = FromJson<Type>::convert;
-      std::vector<Type> result;
-      auto feach =
-        json_array_for_each(value, [&result](const auto &item) {
-          if (auto exp_res = converter(item); exp_res.has_value()) {
-            result.emplace_back(std::move(exp_res.value()));
-            return ExpType<void>();
-          } else {
-            return UnexpJsonError(exp_res.error());
-          }
-        });
-      return feach.transform([res = std::move(result)]() { return res; });
-    }
-  };
-"#;
-
-const INTERNAL_CODE_MAP: &'static str = r#"
-  template <typename JValue, typename Cb>
-  auto json_object_for_each(const JValue &value, Cb cb) {
-    if constexpr (std::is_same_v<JValue, Reader::JsonValue>) {
-      return Reader::json_object_for_each(value, cb);
-    } else if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
-      return Data::json_object_for_each(value, cb);
-    }
-  }
-
-  template<typename Type>
-  struct FromJson<JsonMap<Type>> {
-    template <typename JValue>
-    static ExpType<JsonMap<Type>> convert(const JValue& value) {
-      auto converter = FromJson<Type>::convert;
-      JsonMap<Type> result;
-      auto feach =
-        json_object_for_each(value, [&result](const auto key, const auto &val) {
-          if (auto exp_res = converter(val); exp_res.has_value()) {
-            auto [_iter, ok] = result.insert({ std::string(key), exp_res.value() });
-            if (ok) {
-              return ExpType<void>();
-            }
-            else {
-              const auto err = std::format("Duplicated key \"{}\"", key);
-              return UnexpJsonError(JsonErrorTypes::String, err);
-            }
-          }
-          else {
-            return UnexpJsonError(exp_res.error());
-          }
-        });
-      return feach.transform([res = std::move(result)]() { return res; });
-    }
-  };
-"#;
+const INTERNAL_CODE_ARRAY: &'static str = include_str!("./cpp_snippets/internal_code_array.cpp");
+const INTERNAL_CODE_MAP: &'static str = include_str!("./cpp_snippets/internal_code_object.cpp");
 
 fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
     format!(
@@ -129,21 +40,8 @@ fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
     )
 }
 
-const INTERNAL_CODE_VALUE_INDEX: &'static str = r#"
-  constexpr ExpType<int> getValueIndex(const std::string_view value,
-                                       const std::span<const std::string_view> entries,
-                                       const std::string_view structName) {
-    for (int index = 0; const auto entry : entries) {
-      if (value == entry) {
-        return index;
-      }
-      ++index;
-    }
-    const auto err = std::format("Invalid key \"{}\" in {}",
-                                 value, structName);
-    return makeJsonError(JsonErrorTypes::Invalid, err);
-  }
-"#;
+const INTERNAL_CODE_VALUE_INDEX: &'static str =
+    include_str!("./cpp_snippets/internal_code_val_idx.cpp");
 
 #[derive(Default)]
 pub struct CppState {
@@ -203,8 +101,7 @@ impl CppState {
         let type_internal_code = self
             .cpp_types
             .iter()
-            .enumerate()
-            .map(|(i, t)| t.get_internal_code(&self, cpp_props))
+            .map(|t| t.get_internal_code(&self, cpp_props))
             .collect::<String>();
 
         if type_internal_code.is_empty()
@@ -247,55 +144,47 @@ impl CppState {
             return "".to_string();
         }
 
-        const PRE_DECL: [&str; 2] = ["\n// forward declarations\n", ""];
-        let mut first = true;
-        (&self.cpp_types)
+        let forward = (&self.cpp_types)
             .iter()
             .enumerate()
-            .filter_map(|it| {
-                if it.1.needs_forward_declaration() {
-                    let n = &self.names[it.0];
-                    let pre = it.1.type_prefix();
-                    let idx: usize = (!first) as usize;
-                    first = false;
-                    Some(format!("{}{} {};\n", PRE_DECL[idx], pre, n))
+            .filter_map(|(i, t)| {
+                if t.needs_forward_declaration() {
+                    let n = &self.names[i];
+                    let pre = t.type_prefix();
+                    Some(format!("{} {};\n", pre, n))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect::<String>();
+        format!("\n// forward declarations\n{}", forward)
     }
 
     pub fn write_alias(&self) -> String {
-        const PRE_ALIAS: [&str; 2] = ["\n// aliases\n", ""];
-        let mut first = true;
-        (&self.cpp_types)
+        let aliases = (&self.cpp_types)
             .iter()
             .filter_map(|t| match t {
-                CppTypes::Alias(a) => {
-                    let idx = (!first) as usize;
-                    first = false;
-                    Some(format!("{}{};\n", PRE_ALIAS[idx], a.format()))
-                }
+                CppTypes::Alias(a) => Some(format!("{};\n", a.format())),
                 _ => None,
             })
-            .collect()
+            .collect::<String>();
+        format!("\n// aliases\n{}", aliases)
     }
 
     pub fn declare(&self, cpp_props: &CppProps) -> String {
-        "\n// declarations".to_string()
-            + &((&self.cpp_types)
-                .iter()
-                .map(|t| t.declare(self, cpp_props))
-                .collect::<String>())
+        let declares = (&self.cpp_types)
+            .iter()
+            .map(|t| t.declare(self, cpp_props))
+            .collect::<String>();
+        format!("\n// declarations{}", declares)
     }
 
     pub fn prototype(&self, cpp_props: &CppProps) -> String {
-        "\n// prototypes".to_string()
-            + &(self.cpp_types)
-                .iter()
-                .map(|t| t.prototype(self, cpp_props))
-                .collect::<String>()
+        let protos = &(self.cpp_types)
+            .iter()
+            .map(|t| t.prototype(self, cpp_props))
+            .collect::<String>();
+        format!("\n// prototypes{}", protos)
     }
 
     pub fn define(&self, cpp_props: &CppProps) -> String {

@@ -5,6 +5,12 @@ use crate::state::CppState;
 
 type TypeIndex = usize;
 
+fn create_entry_array(entries: &str, size: usize) -> String {
+    include_str!("./cpp_snippets/entries_array.cpp")
+        .replace("SIZE", &size.to_string())
+        .replace("ENTRIES", entries)
+}
+
 fn deserialize_name(name: &str) -> String {
     format!("fromJson{}", name)
 }
@@ -41,10 +47,7 @@ fn create_visited_array(sz: usize) -> String {
             format!("{}false", prefix)
         })
         .collect::<String>();
-    format!(
-        r#"std::array<bool, {}> visited = {{ false, {} }};"#,
-        sz, falses
-    )
+    format!(r#"std::array<bool, {}> visited = {{ {} }};"#, sz, falses)
 }
 
 #[derive(Debug, PartialEq)]
@@ -63,34 +66,7 @@ impl CppEnum {
     }
 
     pub fn get_enum_index_code() -> &'static str {
-        r#"
-  template<typename JValue>
-  ExpType<int> getEnumIndex(const JValue &value,
-                            const std::span<const std::string_view> entries,
-                            const std::string_view enumName) {
-    if (const auto str = value.read_str(); str.has_value()) {
-      const auto val = std::move(str.value());
-      for (int index = 0; const auto entry : entries) {
-        if (val == entry) {
-         return index;
-        }
-        ++index;
-      }
-      const auto err = std::format("Invalid value \"{}\" for {}",
-                                   value, enumName);
-      return makeJsonError(JsonErrorTypes::Invalid, err);
-    }
-    else {
-      if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
-        const auto err = std::format("Not a string for {}", enumName);
-        return makeJsonError(JsonErrorTypes::Invalid, err);
-      }
-      else {
-        return std::unexpected(str.error());
-      }
-    }
-  }
-"#
+        include_str!("./cpp_snippets/internal_code_enum_idx.cpp")
     }
 
     fn declare(&self) -> String {
@@ -125,13 +101,7 @@ impl CppEnum {
                 format!("{}\"{}\"sv", prefix, m.json_value)
             })
             .collect::<String>();
-        format!(
-            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
-          {}
-        }}}};"#,
-            self.members.len(),
-            items
-        )
+        create_entry_array(&items, self.members.len())
     }
 
     fn create_switch_clauses(&self) -> String {
@@ -149,31 +119,13 @@ impl CppEnum {
 
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
-        format!(
-            r#"
-  template<>
-  struct FromJson<{}> {{
-    {}
-
-    template<typename JValue>
-    static ExpType<{}> convert(const JValue &value) {{
-      using {};
-      return getEnumIndex(value, entries, "{}"sv)
-        .transform([](auto idx) {{
-          switch(idx) {{
-            default:
-{}        }}
-      }});
-    }}
-  }};
-"#,
-            fullname,
-            self.create_entry_array(),
-            fullname,
-            fullname,
-            self.name,
-            self.create_switch_clauses()
-        )
+        let entries = self.create_entry_array();
+        let clauses = self.create_switch_clauses();
+        include_str!("./cpp_snippets/enum_from_json.cpp")
+            .replace("FULL_NAME", &fullname)
+            .replace("ENTRIES", &entries)
+            .replace("ENUM_NAME", &self.name)
+            .replace("CLAUSES", &clauses)
     }
 }
 
@@ -235,13 +187,7 @@ impl CppStruct {
                 format!("{}\"{}\"sv", prefix, f.json_name)
             })
             .collect::<String>();
-        format!(
-            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
-          {}
-        }}}};"#,
-            self.fields.len(),
-            items
-        )
+        create_entry_array(&items, self.fields.len())
     }
 
     fn create_switch_clauses(&self) -> String {
@@ -261,47 +207,14 @@ impl CppStruct {
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let clauses = self.create_switch_clauses();
+        let entries = self.create_entry_array();
         let visited = create_visited_array(self.fields.len());
-        format!(
-            r#"
-  template<>
-  struct FromJson<{}> {{
-    {}
-
-    template<typename JValue>
-    static ExpType<{}> convert(const JValue &value) {{
-      {}
-      {} result;
-
-      auto feach = json_object_for_each(
-        value,
-        [&](const auto key, const auto &val) {{
-          return flatten_expected(
-            getValueIndex(key, entries, "{}"sv)
-            .transform([&](const int idx) -> ExpType<void> {{
-              if (visited[idx]) {{
-                const auto err = std::format("Duplicated key {{}}", key);
-                return makeJsonError(JsonErrorTypes::Invalid, err);
-              }}
-              visited[idx] = true;
-
-              switch (idx) {{
-                default:{}
-              }}
-            }}));
-        }});
-      return feach.transform([res = std::move(result)]() {{ return res; }});
-    }}
-  }};
-"#,
-            fullname,
-            self.create_entry_array(),
-            fullname,
-            visited,
-            fullname,
-            self.name,
-            clauses
-        )
+        include_str!("./cpp_snippets/struct_from_json.cpp")
+            .replace("FULL_NAME", &fullname)
+            .replace("ENTRIES", &entries)
+            .replace("VISITED", &visited)
+            .replace("STRUCT_NAME", &self.name)
+            .replace("CLAUSES", &clauses)
     }
 }
 
@@ -386,63 +299,15 @@ impl CppDiscriminator {
             .collect()
     }
 
-    fn get_constructors(&self) -> String {
-        format!(
-            r#"
-  constexpr {}() = default;
-  template<typename U> constexpr {}(U& t): m_value(t) {{}}"#,
-            self.name, self.name
-        )
-    }
-
     fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        const GETTER_DEF: &'static str = r#"
-  template<Types Tp> constexpr auto get()"#;
-        const GETTER_INTERNAL: &'static str = r#"{
-    namespace DT = JsonTypedefCodeGen::Data;
-    if (auto ptr = std::get_if<size_t(Tp)>(&m_value); ptr != nullptr) {
-      return DT::OptRefW(DT::RefW(*ptr));
-    }
-    return DT::OptRefW();
-  }"#;
         let _ = cpp_props;
         let _ = cpp_state;
         let variant_types = self.get_variante_types();
         let enum_items = self.get_enum_type_items();
-        let constructors = self.get_constructors();
-        format!(
-            r#"
-class {} {{
-private:
-  using variant_t = std::variant<{}>;
-  variant_t m_value;
-
-public:
-  enum class Types: size_t {{
-    {}
-  }};
-{}
-
-  template<typename U> constexpr {}& operator=(U& t) {{
-    m_value = t;
-    return *this;
-  }}
-
-  constexpr Types type() const {{ return Types(m_value.index()); }}
-{} {}
-{} const {}
-}};
-"#,
-            self.name,
-            variant_types,
-            enum_items,
-            constructors,
-            self.name, // template assign
-            GETTER_DEF,
-            GETTER_INTERNAL,
-            GETTER_DEF,
-            GETTER_INTERNAL
-        )
+        include_str!("./cpp_snippets/disc_declare.cpp")
+            .replace("DISCRIMINATOR_NAME", &self.name)
+            .replace("VARIANT_NAMES", &variant_types)
+            .replace("TYPE_VALUES", &enum_items)
     }
 
     fn prototype(&self) -> String {
@@ -465,13 +330,7 @@ public:
                 format!("{}\"{}\"sv", prefix, v.tag_value)
             })
             .collect::<String>();
-        format!(
-            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
-          {}
-        }}}};"#,
-            self.variants.len(),
-            items
-        )
+        create_entry_array(&items, self.variants.len())
     }
 
     fn create_switch_clauses(&self) -> String {
@@ -490,48 +349,14 @@ public:
 
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
+        let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses();
-        format!(
-            r#"
-  template<>
-  struct FromJson<{}> {{
-    using Disc = {};
-    {}
-
-    static ExpType<Disc> convert(const Data::JsonValue &value) {{
-      auto exp_obj = optionalToExpType(value.read_object(), JsonErrorTypes::Invalid, "not an object"sv);
-
-      return flatten_expected(
-        exp_obj.transform([](Data::JsonObject object) {{
-          auto& inner = object.internal();
-          const auto fnd = inner.find(std::string("{}"sv));
-          if (fnd == inner.end()) {{
-            return makeJsonError(JsonErrorTypes::Invalid, "missing key \"{}\" for {}"sv);
-          }}
-
-          return getValueIndex(fnd->second, entries, "{}"sv)
-            .transform([&object](int idx) {{
-              constexpr auto toDisc = [](auto v) {{ return Disc(v); }};
-              switch (idx) {{
-                default:{}
-              }}
-            }});
-        }}));
-    }}
-    static ExpType<Disc> convert(const Reader::JsonValue &value) {{
-      return flatten_expected(value.clone().transform(FromJson<Disc>::convert));
-    }}
-  }};
-"#,
-            fullname,
-            fullname,
-            self.create_entry_array(),
-            self.tag_field_name,
-            self.tag_field_name,
-            self.name,
-            fullname,
-            clauses
-        )
+        include_str!("./cpp_snippets/disc_from_json.cpp")
+            .replace("FULL_NAME", &fullname)
+            .replace("ENTRIES", &entries)
+            .replace("TAG_KEY", &self.tag_field_name)
+            .replace("DISC_NAME", &self.name)
+            .replace("CLAUSES", &clauses)
     }
 }
 
@@ -632,44 +457,15 @@ impl CppDiscriminatorVariant {
 
     fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
+        let entries = self.create_entry_array();
         let visited = create_visited_array(self.fields.len() + 1);
-        format!(
-            r#"
-  template<>
-  struct FromJson<{}> {{
-    using Vary = {};
-    {}
-
-    template<typename JValue>
-    static ExpType<Vary> convert(const JValue &object) {{
-      Vary result;
-      auto feach = json_object_for_each(object, [&result](auto key, auto val) {{
-          {}
-          return getValueIndex(key, entries, "{}"sv)
-            .transform([&](int idx) -> ExpType<void> {{
-                if (!visited[idx]) {{
-                  const auto err = std::format("Duplicated key {{}}", key);
-                  return makeJsonError(JsonErrorTypes::Invalid, err);
-                }}
-                visited[idx] = true;
-
-                switch (idx) {{
-                  default:
-                  case 0: break; // discriminator{}
-                }}
-            }});
-        }});
-      return feach.transform([res = std::move(result)]() {{ return res; }});
-    }}
-  }};
-"#,
-            fullname,
-            fullname,
-            self.create_entry_array(),
-            visited,
-            self.name,
-            self.create_switch_clauses()
-        )
+        let clauses = self.create_switch_clauses();
+        include_str!("./cpp_snippets/vary_from_json.cpp")
+            .replace("FULL_NAME", &fullname)
+            .replace("ENTRIES", &entries)
+            .replace("VISITED", &visited)
+            .replace("VARY_NAME", &self.name)
+            .replace("CLAUSES", &clauses)
     }
 }
 
@@ -738,27 +534,16 @@ impl Primitives {
 
     fn get_internal_function(&self) -> String {
         let typename = self.cpp_name();
-        format!(
-            r#"
-  template<>
-  struct FromJson<{}> {{
-    static ExpType<{}> convert(const Reader::JsonValue& value) {{
-      return {}{};
-    }}
-    static ExpType<{}> convert(const Data::JsonValue& value) {{
-      return optionalToExpType({}, JsonErrorTypes::Invalid, "not a {}"sv){};
-    }}
-  }};
-"#,
-            typename,
-            typename,
-            self.read_primitive("value"),
-            self.cpp_reader_transform(),
-            typename,
-            self.read_primitive("value"),
-            self.cpp_name(),
-            self.cpp_data_transform()
-        )
+        let read_prim = self.read_primitive("value");
+        let read_xform = self.cpp_reader_transform();
+        let data_xform = self.cpp_data_transform();
+        let exp_type = self.cpp_name();
+        include_str!("./cpp_snippets/prim_from_json.cpp")
+            .replace("FULL_NAME", &typename)
+            .replace("READ_PRIM_VALUE", &read_prim)
+            .replace("READER_XFORM", &read_xform)
+            .replace("EXP_TYPE", &exp_type)
+            .replace("DATA_XFORM", &data_xform)
     }
 
     // internal_visit(&self, cpp_state, visited_indices)
@@ -783,6 +568,7 @@ impl CppDict {
 
     pub fn get_set_internal_function(cpp_props: &CppProps) -> String {
         let settype = cpp_props.get_dictionary_info("").1;
+        // TODO: use a simple "using" statement to define the SetType then full static code
         format!(
             r#"
   template<> struct FromJson<{}> {{
