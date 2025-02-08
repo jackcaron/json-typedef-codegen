@@ -141,4 +141,45 @@ namespace JsonTypedefCodeGen::Data {
   template <typename Type> using RefW = std::reference_wrapper<Type>;
   template <typename Type> using OptRefW = std::optional<RefW<Type>>;
 
+  // Iterator Utils, stop at the first error
+  using ArrayForEachFn = std::function<ExpType<void>(const JsonValue&)>;
+  using ObjectForEachFn =
+      std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
+
+  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb) {
+    for (auto item : array) {
+      if (auto exp = cb(item); !exp.has_value()) {
+        return UnexpJsonError(exp.error());
+      }
+    }
+    return ExpType<void>();
+  }
+
+  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb) {
+    if (auto opt_arr = value.read_array(); opt_arr.has_value()) {
+      return json_array_for_each(*opt_arr, cb);
+    }
+    return makeJsonError(JsonErrorTypes::Invalid,
+                         std::string_view("expected an array"));
+  }
+
+  ExpType<void> json_object_for_each(const JsonObject& object,
+                                     ObjectForEachFn cb) {
+    for (auto& [key, val] : object) {
+      if (auto exp = cb(key, val); !exp.has_value()) {
+        return UnexpJsonError(exp.error());
+      }
+    }
+    return ExpType<void>();
+  }
+
+  ExpType<void> json_object_for_each(const JsonValue& value,
+                                     ObjectForEachFn cb) {
+    if (auto opt_obj = value.read_object(); opt_obj.has_value()) {
+      return json_object_for_each(*opt_obj, cb);
+    }
+    return makeJsonError(JsonErrorTypes::Invalid,
+                         std::string_view("expected an object"));
+  }
+
 } // namespace JsonTypedefCodeGen::Data
