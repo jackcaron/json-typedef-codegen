@@ -53,7 +53,12 @@
     "expected": "cpp",
     "string_view": "cpp",
     "chrono": "cpp",
-    "ratio": "cpp"
+    "ratio": "cpp",
+    "variant": "cpp",
+    "map": "cpp",
+    "format": "cpp",
+    "regex": "cpp",
+    "charconv": "cpp"
   },
   "clang-format.executable": "clang-format",
   "clang-format.style": "file",
@@ -63,5 +68,6 @@
     "editor.wordBasedSuggestions": "off",
     "editor.suggest.insertMode": "replace",
     "editor.semanticHighlighting.enabled": true
-  }
+  },
+  "rust-analyzer.linkedProjects": ["Cargo.toml"]
 }
