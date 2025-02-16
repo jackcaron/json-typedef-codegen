@@ -1,18 +1,18 @@
 
-class DISCRIMINATOR_NAME {
+class $DISCRIMINATOR_NAME$ {
 private:
-  using variant_t = std::variant<VARIANT_NAMES>;
+  using variant_t = std::variant<$VARIANT_NAMES$>;
   variant_t m_value;
 
 public:
   enum class Types: size_t {
-    TYPE_VALUES
+    $TYPE_VALUES$
   };
 
-  constexpr DISCRIMINATOR_NAME() = default;
-  template<typename U> constexpr DISCRIMINATOR_NAME(U& t): m_value(t) {}
+  constexpr $DISCRIMINATOR_NAME$() = default;
+  template<typename U> constexpr $DISCRIMINATOR_NAME$(U& t): m_value(t) {}
 
-  template<typename U> constexpr DISCRIMINATOR_NAME& operator=(U& t) {
+  template<typename U> constexpr $DISCRIMINATOR_NAME$& operator=(U& t) {
     m_value = t;
     return *this;
   }

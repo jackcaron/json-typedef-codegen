@@ -6,19 +6,19 @@ namespace {
   template<typename Type> struct FromJson;
 
   template <typename Type>
-  ExpType<void> convertAndSet(Type &dst, const Reader::JsonValue &value) {
+  ExpType<void> convert_and_set(Type &dst, const Reader::JsonValue &value) {
     return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
   }
 
   template <typename Type>
-  ExpType<void> convertAndSet(Type &dst, const Data::JsonValue &value) {
+  ExpType<void> convert_and_set(Type &dst, const Data::JsonValue &value) {
     return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
   }
 
   template <typename Type>
-  ExpType<Type> optionalToExpType(const std::optional<Type> &opt,
-                                  const JsonErrorTypes errtype,
-                                  const std::string_view msg) {
+  ExpType<Type> optional_to_exp_type(const std::optional<Type> &opt,
+                                     const JsonErrorTypes errtype,
+                                     const std::string_view msg) {
     if (opt.has_value()) {
       return *opt;
     }

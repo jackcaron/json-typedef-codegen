@@ -1,16 +1,16 @@
 
   template<>
-  struct FromJson<FULL_NAME> {
-    ENTRIES
+  struct FromJson<$FULL_NAME$> {
+    using Enum = $FULL_NAME$;
+    $ENTRIES$
 
     template<typename JValue>
-    static ExpType<FULL_NAME> convert(const JValue &value) {
-      using FULL_NAME;
-      return getEnumIndex(value, entries, "ENUM_NAME"sv)
+    static ExpType<Enum> convert(const JValue &value) {
+      return getEnumIndex(value, entries, "$ENUM_NAME$"sv)
         .transform([](auto idx) {
           switch(idx) {
             default:
-CLAUSES        }
+$CLAUSES$        }
       });
     }
   };

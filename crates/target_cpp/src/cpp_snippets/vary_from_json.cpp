@@ -1,15 +1,15 @@
 
   template<>
-  struct FromJson<FULL_NAME> {
-    using Vary = FULL_NAME;
-    ENTRIES
+  struct FromJson<$FULL_NAME$> {
+    using Vary = $FULL_NAME$;
+    $ENTRIES$
 
     template<typename JValue>
     static ExpType<Vary> convert(const JValue &object) {
       Vary result;
       auto feach = json_object_for_each(object, [&result](auto key, auto val) {
-          VISITED
-          return getValueIndex(key, entries, "VARY_NAME"sv)
+          $VISITED$
+          return getValueIndex(key, entries, "$VARY_NAME$"sv)
             .transform([&](int idx) -> ExpType<void> {
                 if (!visited[idx]) {
                   const auto err = std::format("Duplicated key {}", key);
@@ -19,7 +19,7 @@
 
                 switch (idx) {
                   default:// discriminator
-                  case 0: break;CLAUSES
+                  case 0: break;$CLAUSES$
                 }
             });
         });
