@@ -14,20 +14,13 @@ use crate::{
 const INTERNAL_CODE_HEADER: &'static str =
     include_str!("./cpp_snippets/internal_code_ns_header.cpp");
 
-const INTERNAL_CODE_RAW_JSON_DATA: &'static str = r#"
-  template<>
-  struct FromJson<Data::JsonValue> {
-    static ExpType<Data::JsonValue> convert(const Reader::JsonValue& v) {
-      return v.clone();
-    }
-    static ExpType<Data::JsonValue> convert(const Data::JsonValue& v) {
-      return v;
-    }
-  };
-"#;
+const INTERNAL_CODE_RAW_JSON_DATA: &'static str =
+    include_str!("./cpp_snippets/internal_code_raw_json.cpp");
 
 const INTERNAL_CODE_ARRAY: &'static str = include_str!("./cpp_snippets/internal_code_array.cpp");
 const INTERNAL_CODE_MAP: &'static str = include_str!("./cpp_snippets/internal_code_object.cpp");
+const INTERNAL_CODE_UPTR: &'static str =
+    include_str!("./cpp_snippets/internal_code_unique_ptr.cpp");
 
 fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
     format!(
@@ -61,9 +54,22 @@ pub struct CppState {
     require_map_internal_code: bool,
     require_set_internal_code: bool,
     require_json_raw_data_internal_code: bool,
+    require_unique_ptr_internal_code: bool,
 }
 
 impl CppState {
+    pub fn get_aliased_name<'a>(&'a self, name: &'a str) -> &'a str {
+        self.cpp_types
+            .iter()
+            .filter_map(|t| match t {
+                CppTypes::Alias(alias) => Some(alias),
+                _ => None,
+            })
+            .find(|a| a.sub_matches(name))
+            .map(|a| a.get_name())
+            .unwrap_or(name)
+    }
+
     pub fn get_index_from_name(&self, name: &String) -> Option<usize> {
         match self.cpp_type_indices.get(name) {
             Some(ridx) => Some(*ridx),
@@ -84,7 +90,6 @@ impl CppState {
     }
 
     pub fn write_src_include_files(&self) -> String {
-        // but exclude files already included in the header
         self.src_include_files
             .iter()
             .filter_map(|h| {
@@ -101,7 +106,7 @@ impl CppState {
         let type_internal_code = self
             .cpp_types
             .iter()
-            .map(|t| t.get_internal_code(&self, cpp_props))
+            .filter_map(|t| t.get_internal_code(&self, cpp_props))
             .collect::<String>();
 
         if type_internal_code.is_empty()
@@ -111,6 +116,7 @@ impl CppState {
             && !self.require_map_internal_code
             && !self.require_get_value_index_code
             && !self.require_json_raw_data_internal_code
+            && !self.require_unique_ptr_internal_code
         {
             return String::new();
         }
@@ -127,12 +133,9 @@ impl CppState {
         if self.require_set_internal_code {
             intern_code = intern_code + &CppDict::get_set_internal_function(cpp_props);
         }
-        // if self.require_array_internal_code {
-        //     intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
-        // }
-        // if self.require_map_internal_code {
-        //     intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
-        // }
+        if self.require_unique_ptr_internal_code {
+            intern_code = intern_code + &INTERNAL_CODE_UPTR.to_string();
+        }
         if self.require_json_raw_data_internal_code {
             intern_code = intern_code + &INTERNAL_CODE_RAW_JSON_DATA.to_string();
         }
@@ -149,9 +152,7 @@ impl CppState {
             .enumerate()
             .filter_map(|(i, t)| {
                 if t.needs_forward_declaration() {
-                    let n = &self.names[i];
-                    let pre = t.type_prefix();
-                    Some(format!("{} {};\n", pre, n))
+                    Some(format!("{} {};\n", t.type_prefix(), self.names[i]))
                 } else {
                     None
                 }
@@ -164,17 +165,21 @@ impl CppState {
         let aliases = (&self.cpp_types)
             .iter()
             .filter_map(|t| match t {
-                CppTypes::Alias(a) => Some(format!("{};\n", a.format())),
+                CppTypes::Alias(a) => Some(a.format()),
                 _ => None,
             })
             .collect::<String>();
-        format!("\n// aliases\n{}", aliases)
+        if aliases.is_empty() {
+            String::new()
+        } else {
+            format!("\n// aliases\n{}", aliases)
+        }
     }
 
     pub fn declare(&self, cpp_props: &CppProps) -> String {
         let declares = (&self.cpp_types)
             .iter()
-            .map(|t| t.declare(self, cpp_props))
+            .filter_map(|t| t.declare(self, cpp_props))
             .collect::<String>();
         format!("\n// declarations{}", declares)
     }
@@ -182,7 +187,7 @@ impl CppState {
     pub fn prototype(&self, cpp_props: &CppProps) -> String {
         let protos = &(self.cpp_types)
             .iter()
-            .map(|t| t.prototype(self, cpp_props))
+            .filter_map(|t| t.prototype(self, cpp_props))
             .collect::<String>();
         format!("\n// prototypes{}", protos)
     }
@@ -190,7 +195,7 @@ impl CppState {
     pub fn define(&self, cpp_props: &CppProps) -> String {
         self.cpp_types
             .iter()
-            .map(|t| t.define(self, cpp_props))
+            .filter_map(|t| t.define(self, cpp_props))
             .collect::<String>()
     }
 
@@ -248,7 +253,7 @@ impl CppState {
                             self.require_map_internal_code = true;
                             Some(sub_idx)
                         };
-                        let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub));
+                        let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub, name.clone()));
                         self.add_or_replace_cpp_type(name, cpp_type, meta).0
                     }
                 }
@@ -260,13 +265,14 @@ impl CppState {
             }
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
+                self.require_unique_ptr_internal_code = true;
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
                     None => {
                         self.add_include_file("<memory>");
 
                         let (_, sub_idx) = self.add_incomplete(&sub_type);
-                        let cpp_type = CppTypes::Nullable(CppNullable::new(sub_idx));
+                        let cpp_type = CppTypes::Nullable(CppNullable::new(sub_idx, sub_type));
                         self.add_or_replace_cpp_type(name, cpp_type, meta).0
                     }
                 }

@@ -100,8 +100,12 @@ impl Target {
             state.prototype(&self.props)
         )?;
 
-        write!(out, "\n\n{}", self.props.close_namespace())?;
-        write!(out, "\n{}", self.props.get_footer())?;
+        write!(
+            out,
+            "\n\n{}\n{}",
+            self.props.close_namespace(),
+            self.props.get_footer()
+        )?;
         Ok(None)
     }
 }

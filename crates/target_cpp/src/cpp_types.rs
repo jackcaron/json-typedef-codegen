@@ -7,8 +7,8 @@ type TypeIndex = usize;
 
 fn create_entry_array(entries: &str, size: usize) -> String {
     include_str!("./cpp_snippets/entries_array.cpp")
-        .replace("SIZE", &size.to_string())
-        .replace("ENTRIES", entries)
+        .replace("$SIZE$", &size.to_string())
+        .replace("$ENTRIES$", entries)
 }
 
 fn deserialize_name(name: &str) -> String {
@@ -110,8 +110,9 @@ impl CppEnum {
             .enumerate()
             .map(|(i, m)| {
                 format!(
-                    "            case {}: return {}::{};\n",
-                    i, self.name, m.name
+                    r#"            case {}: return Enum::{};
+"#,
+                    i, m.name
                 )
             })
             .collect()
@@ -122,10 +123,10 @@ impl CppEnum {
         let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses();
         include_str!("./cpp_snippets/enum_from_json.cpp")
-            .replace("FULL_NAME", &fullname)
-            .replace("ENTRIES", &entries)
-            .replace("ENUM_NAME", &self.name)
-            .replace("CLAUSES", &clauses)
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$ENTRIES$", &entries)
+            .replace("$ENUM_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
     }
 }
 
@@ -153,9 +154,7 @@ impl CppStruct {
         "struct"
     }
 
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
+    fn declare(&self) -> String {
         format!(
             "\n{} {} {{\n{}}};\n",
             CppStruct::get_prefix(),
@@ -197,7 +196,7 @@ impl CppStruct {
             .map(|(i, f)| {
                 format!(
                     r#"
-                case {}: return convertAndSet(result.{}, val);"#,
+                case {}: return convert_and_set(result.{}, val);"#,
                     i, f.name
                 )
             })
@@ -210,11 +209,11 @@ impl CppStruct {
         let entries = self.create_entry_array();
         let visited = create_visited_array(self.fields.len());
         include_str!("./cpp_snippets/struct_from_json.cpp")
-            .replace("FULL_NAME", &fullname)
-            .replace("ENTRIES", &entries)
-            .replace("VISITED", &visited)
-            .replace("STRUCT_NAME", &self.name)
-            .replace("CLAUSES", &clauses)
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$ENTRIES$", &entries)
+            .replace("$VISITED$", &visited)
+            .replace("$STRUCT_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
     }
 }
 
@@ -229,7 +228,13 @@ impl CppAlias {
         CppAlias { name, sub_type }
     }
     pub fn format(&self) -> String {
-        format!("using {} = {}", self.name, self.sub_type)
+        format!("using {} = {};\n", self.name, self.sub_type)
+    }
+    pub fn sub_matches(&self, sub_type: &str) -> bool {
+        self.sub_type == sub_type
+    }
+    pub fn get_name<'a>(&'a self) -> &'a str {
+        &self.name
     }
 }
 
@@ -299,15 +304,13 @@ impl CppDiscriminator {
             .collect()
     }
 
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
+    fn declare(&self) -> String {
         let variant_types = self.get_variante_types();
         let enum_items = self.get_enum_type_items();
         include_str!("./cpp_snippets/disc_declare.cpp")
-            .replace("DISCRIMINATOR_NAME", &self.name)
-            .replace("VARIANT_NAMES", &variant_types)
-            .replace("TYPE_VALUES", &enum_items)
+            .replace("$DISCRIMINATOR_NAME$", &self.name)
+            .replace("$VARIANT_NAMES$", &variant_types)
+            .replace("$TYPE_VALUES$", &enum_items)
     }
 
     fn prototype(&self) -> String {
@@ -352,11 +355,11 @@ impl CppDiscriminator {
         let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses();
         include_str!("./cpp_snippets/disc_from_json.cpp")
-            .replace("FULL_NAME", &fullname)
-            .replace("ENTRIES", &entries)
-            .replace("TAG_KEY", &self.tag_field_name)
-            .replace("DISC_NAME", &self.name)
-            .replace("CLAUSES", &clauses)
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$ENTRIES$", &entries)
+            .replace("$TAG_KEY$", &self.tag_field_name)
+            .replace("$DISC_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
     }
 }
 
@@ -396,9 +399,7 @@ impl CppDiscriminatorVariant {
         "struct"
     }
 
-    fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
-        let _ = cpp_props;
-        let _ = cpp_state;
+    fn declare(&self) -> String {
         format!(
             "\n{} {} {{\n{}}};\n",
             CppDiscriminatorVariant::get_prefix(),
@@ -447,7 +448,7 @@ impl CppDiscriminatorVariant {
             .map(|(i, f)| {
                 format!(
                     r#"
-                  case {}: convertAndSet(result.{}, val); break;"#,
+                  case {}: convert_and_set(result.{}, val); break;"#,
                     i + 1,
                     f.name
                 )
@@ -461,11 +462,11 @@ impl CppDiscriminatorVariant {
         let visited = create_visited_array(self.fields.len() + 1);
         let clauses = self.create_switch_clauses();
         include_str!("./cpp_snippets/vary_from_json.cpp")
-            .replace("FULL_NAME", &fullname)
-            .replace("ENTRIES", &entries)
-            .replace("VISITED", &visited)
-            .replace("VARY_NAME", &self.name)
-            .replace("CLAUSES", &clauses)
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$ENTRIES$", &entries)
+            .replace("$VISITED$", &visited)
+            .replace("$VARY_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
     }
 }
 
@@ -525,9 +526,9 @@ impl Primitives {
 
     fn cpp_data_transform(&self) -> String {
         match self {
-            Primitives::String => {
-                "\n        .transform([](auto v) { return std::string(v); })".to_string()
-            }
+            Primitives::String => r#"
+        .transform([](auto v) { return std::string(v); })"#
+                .to_string(),
             _ => String::new(),
         }
     }
@@ -539,11 +540,11 @@ impl Primitives {
         let data_xform = self.cpp_data_transform();
         let exp_type = self.cpp_name();
         include_str!("./cpp_snippets/prim_from_json.cpp")
-            .replace("FULL_NAME", &typename)
-            .replace("READ_PRIM_VALUE", &read_prim)
-            .replace("READER_XFORM", &read_xform)
-            .replace("EXP_TYPE", &exp_type)
-            .replace("DATA_XFORM", &data_xform)
+            .replace("$FULL_NAME$", &typename)
+            .replace("$READ_PRIM_VALUE$", &read_prim)
+            .replace("$READER_XFORM$", &read_xform)
+            .replace("$EXP_TYPE$", &exp_type)
+            .replace("$DATA_XFORM$", &data_xform)
     }
 
     // internal_visit(&self, cpp_state, visited_indices)
@@ -559,11 +560,11 @@ impl CppArray {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct CppDict(Option<TypeIndex>);
+pub struct CppDict(Option<TypeIndex>, String);
 
 impl CppDict {
-    pub fn new(opt_idx: Option<TypeIndex>) -> CppDict {
-        CppDict(opt_idx)
+    pub fn new(opt_idx: Option<TypeIndex>, name: String) -> CppDict {
+        CppDict(opt_idx, name)
     }
 
     pub fn get_set_internal_function(cpp_props: &CppProps) -> String {
@@ -583,15 +584,44 @@ impl CppDict {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct CppNullable(TypeIndex);
+pub struct CppNullable(TypeIndex, String);
 
 impl CppNullable {
-    pub fn new(idx: TypeIndex) -> CppNullable {
-        CppNullable(idx)
+    pub fn new(idx: TypeIndex, name: String) -> CppNullable {
+        CppNullable(idx, name)
     }
 
-    fn get_internal_function(&self, cpp_state: &CppState) -> String {
-        todo!()
+    fn function_name(&self) -> String {
+        format!("fromJsonNullable{}", self.1)
+    }
+
+    fn get_full_name(&self, cpp_state: &CppState) -> String {
+        let uptr_name = format!("std::unique_ptr<{}>", self.1);
+        cpp_state.get_aliased_name(&uptr_name).to_string()
+    }
+
+    fn prototype(&self, cpp_state: &CppState) -> String {
+        let full_name = self.get_full_name(cpp_state);
+        format!(
+            r#"
+JsonTypedefCodeGen::ExpType<{}> {}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
+            full_name,
+            self.function_name()
+        )
+    }
+
+    fn define(&self, cpp_state: &CppState) -> String {
+        let full_name = self.get_full_name(cpp_state);
+        format!(
+            r#"
+ExpType<{}> {}(const Reader::JsonValue& value) {{
+  return FromJson<{}>::convert(value);
+}}
+"#,
+            full_name,
+            self.function_name(),
+            full_name
+        )
     }
 }
 
@@ -630,53 +660,46 @@ impl CppTypes {
         }
     }
 
-    pub fn declare(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+    pub fn declare(&self, _cpp_state: &CppState, _cpp_props: &CppProps) -> Option<String> {
         match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.declare(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.declare(cpp_state, cpp_props),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.declare(cpp_state, cpp_props),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.declare(cpp_state, cpp_props),
-            _ => String::new(),
+            CppTypes::Enum(_enum) => Some(_enum.declare()),
+            CppTypes::Struct(_struct) => Some(_struct.declare()),
+            CppTypes::Discriminator(disc) => Some(disc.declare()),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.declare()),
+            _ => None,
         }
     }
 
-    pub fn prototype(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+    pub fn prototype(&self, cpp_state: &CppState, _cpp_props: &CppProps) -> Option<String> {
         match &self {
-            CppTypes::Enum(cpp_enum) => cpp_enum.prototype(),
-            CppTypes::Struct(cpp_struct) => cpp_struct.prototype(),
-            CppTypes::Discriminator(cpp_dist) => cpp_dist.prototype(),
-            CppTypes::DiscriminatorVariant(cpp_var) => cpp_var.prototype(),
-            _ => String::new(),
+            CppTypes::Enum(_enum) => Some(_enum.prototype()),
+            CppTypes::Struct(_struct) => Some(_struct.prototype()),
+            CppTypes::Discriminator(disc) => Some(disc.prototype()),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.prototype()),
+            CppTypes::Nullable(null) => Some(null.prototype(cpp_state)),
+            _ => None,
         }
     }
 
-    pub fn define(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+    pub fn define(&self, cpp_state: &CppState, _cpp_props: &CppProps) -> Option<String> {
         match &self {
-            CppTypes::Enum(cpp_enum) => get_complete_definition(&cpp_enum.name),
-            CppTypes::Struct(cpp_struct) => get_complete_definition(&cpp_struct.name),
-            CppTypes::Discriminator(cpp_discriminator) => {
-                get_complete_definition(&cpp_discriminator.name)
-            }
-            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
-                get_complete_definition(&cpp_discriminator_variant.name)
-            }
-            _ => String::new(),
+            CppTypes::Enum(_enum) => Some(get_complete_definition(&_enum.name)),
+            CppTypes::Struct(_struct) => Some(get_complete_definition(&_struct.name)),
+            CppTypes::Discriminator(disc) => Some(get_complete_definition(&disc.name)),
+            CppTypes::DiscriminatorVariant(vary) => Some(get_complete_definition(&vary.name)),
+            CppTypes::Nullable(null) => Some(null.define(cpp_state)),
+            _ => None,
         }
     }
 
-    pub fn get_internal_code(&self, cpp_state: &CppState, cpp_props: &CppProps) -> String {
+    pub fn get_internal_code(&self, _cpp_state: &CppState, cpp_props: &CppProps) -> Option<String> {
         match self {
-            CppTypes::Primitive(p) => p.get_internal_function(),
-            CppTypes::Enum(cpp_enum) => cpp_enum.get_internal_code(cpp_props),
-            CppTypes::Struct(cpp_struct) => cpp_struct.get_internal_code(cpp_props),
-            CppTypes::Discriminator(cpp_discriminator) => {
-                cpp_discriminator.get_internal_code(cpp_props)
-            }
-            CppTypes::DiscriminatorVariant(cpp_discriminator_variant) => {
-                cpp_discriminator_variant.get_internal_code(cpp_props)
-            }
-            // Nullable!!!
-            _ => String::new(),
+            CppTypes::Primitive(p) => Some(p.get_internal_function()),
+            CppTypes::Enum(_enum) => Some(_enum.get_internal_code(cpp_props)),
+            CppTypes::Struct(_struct) => Some(_struct.get_internal_code(cpp_props)),
+            CppTypes::Discriminator(disc) => Some(disc.get_internal_code(cpp_props)),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.get_internal_code(cpp_props)),
+            _ => None,
         }
     }
 }
