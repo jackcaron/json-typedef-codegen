@@ -1,0 +1,91 @@
+use jtd_codegen::target;
+
+use crate::cpp_types::shared::*;
+use crate::props::CppProps;
+
+#[derive(Debug, PartialEq)]
+pub struct CppStruct {
+    name: String,
+    fields: Vec<target::Field>,
+    cpp_type_indices: Vec<TypeIndex>,
+}
+
+impl CppStruct {
+    pub fn new(
+        name: String,
+        fields: Vec<target::Field>,
+        cpp_type_indices: Vec<TypeIndex>,
+    ) -> CppStruct {
+        CppStruct {
+            name,
+            fields,
+            cpp_type_indices,
+        }
+    }
+
+    pub fn get_name<'a>(&'a self) -> &'a str {
+        &self.name
+    }
+
+    pub fn get_prefix() -> &'static str {
+        "struct"
+    }
+
+    pub fn declare(&self) -> String {
+        let fields = (&self.fields)
+            .iter()
+            .map(|f| format!("  {} {};\n", f.type_, f.name))
+            .collect::<String>();
+        format!("\nstruct {} {{\n{}}};\n", self.name, fields)
+    }
+
+    pub fn prototype(&self) -> String {
+        prototype_name(&self.name)
+    }
+
+    fn create_entry_array(&self) -> String {
+        let items = self
+            .fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let prefix = if i == 0 {
+                    ""
+                } else if (i % 4) == 0 {
+                    ",\n        "
+                } else {
+                    ", "
+                };
+                format!("{}\"{}\"sv", prefix, f.json_name)
+            })
+            .collect::<String>();
+        create_entry_array(&items, self.fields.len())
+    }
+
+    fn create_switch_clauses(&self) -> String {
+        self.fields
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                format!(
+                    r#"
+                case {}: return convert_and_set(result.{}, val);"#,
+                    i, f.name
+                )
+            })
+            .collect::<String>()
+    }
+
+    pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let clauses = self.create_switch_clauses();
+        let entries = self.create_entry_array();
+        let visited = create_visited_array(self.fields.len());
+        include_str!("../cpp_snippets/struct_from_json.cpp")
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$ENTRIES$", &entries)
+            .replace("$VISITED$", &visited)
+            .replace("$STRUCT_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
+    }
+}

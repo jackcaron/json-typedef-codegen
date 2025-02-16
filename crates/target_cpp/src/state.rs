@@ -2,13 +2,7 @@ use jtd_codegen::target;
 use jtd_codegen::target::metadata::Metadata;
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{
-    cpp_types::{
-        CppAlias, CppArray, CppDict, CppDiscriminator, CppDiscriminatorVariant, CppEnum,
-        CppNullable, CppStruct, CppTypes, Primitives,
-    },
-    props::CppProps,
-};
+use crate::{cpp_types::*, props::CppProps};
 
 // internal code header
 const INTERNAL_CODE_HEADER: &'static str =
