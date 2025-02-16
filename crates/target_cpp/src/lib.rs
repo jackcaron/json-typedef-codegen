@@ -1,3 +1,4 @@
+mod cpp_snippets;
 mod cpp_types;
 pub mod props;
 mod state;

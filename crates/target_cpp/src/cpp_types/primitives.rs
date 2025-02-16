@@ -1,3 +1,5 @@
+use crate::cpp_snippets::INTERNAL_CODE_PRIM;
+
 #[derive(Debug, PartialEq)]
 pub enum Primitives {
     Bool,
@@ -67,7 +69,7 @@ impl Primitives {
         let read_xform = self.cpp_reader_transform();
         let data_xform = self.cpp_data_transform();
         let exp_type = self.cpp_name();
-        include_str!("../cpp_snippets/prim_from_json.cpp")
+        INTERNAL_CODE_PRIM
             .replace("$FULL_NAME$", &typename)
             .replace("$READ_PRIM_VALUE$", &read_prim)
             .replace("$READER_XFORM$", &read_xform)

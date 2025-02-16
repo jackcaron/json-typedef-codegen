@@ -1,5 +1,6 @@
 use jtd_codegen::target;
 
+use crate::cpp_snippets::INTERNAL_CODE_STRUCT;
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -81,7 +82,7 @@ impl CppStruct {
         let clauses = self.create_switch_clauses();
         let entries = self.create_entry_array();
         let visited = create_visited_array(self.fields.len());
-        include_str!("../cpp_snippets/struct_from_json.cpp")
+        INTERNAL_CODE_STRUCT
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$VISITED$", &visited)

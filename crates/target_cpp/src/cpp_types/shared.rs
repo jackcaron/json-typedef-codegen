@@ -1,7 +1,9 @@
+use crate::cpp_snippets::ENTRIES_ARRAY;
+
 pub type TypeIndex = usize;
 
 pub fn create_entry_array(entries: &str, size: usize) -> String {
-    include_str!("../cpp_snippets/entries_array.cpp")
+    ENTRIES_ARRAY
         .replace("$SIZE$", &size.to_string())
         .replace("$ENTRIES$", entries)
 }

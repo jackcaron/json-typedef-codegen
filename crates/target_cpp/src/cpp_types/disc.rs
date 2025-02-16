@@ -1,5 +1,6 @@
 use jtd_codegen::target;
 
+use crate::cpp_snippets::{INTERNAL_CODE_DISC, INTERNAL_CODE_VARY};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -124,7 +125,7 @@ impl CppDiscriminator {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses();
-        include_str!("../cpp_snippets/disc_from_json.cpp")
+        INTERNAL_CODE_DISC
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$TAG_KEY$", &self.tag_field_name)
@@ -237,7 +238,7 @@ struct {} {{
         let entries = self.create_entry_array();
         let visited = create_visited_array(self.fields.len() + 1);
         let clauses = self.create_switch_clauses();
-        include_str!("../cpp_snippets/vary_from_json.cpp")
+        INTERNAL_CODE_VARY
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$VISITED$", &visited)

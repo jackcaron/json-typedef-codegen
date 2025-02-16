@@ -2,33 +2,7 @@ use jtd_codegen::target;
 use jtd_codegen::target::metadata::Metadata;
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::{cpp_types::*, props::CppProps};
-
-// internal code header
-const INTERNAL_CODE_HEADER: &'static str =
-    include_str!("./cpp_snippets/internal_code_ns_header.cpp");
-
-const INTERNAL_CODE_RAW_JSON_DATA: &'static str =
-    include_str!("./cpp_snippets/internal_code_raw_json.cpp");
-
-const INTERNAL_CODE_ARRAY: &'static str = include_str!("./cpp_snippets/internal_code_array.cpp");
-const INTERNAL_CODE_MAP: &'static str = include_str!("./cpp_snippets/internal_code_object.cpp");
-const INTERNAL_CODE_UPTR: &'static str =
-    include_str!("./cpp_snippets/internal_code_unique_ptr.cpp");
-
-fn get_from_json_dictionary_converter(cpp_props: &CppProps) -> String {
-    format!(
-        r#"
-  template<typename Type>
-  using JsonMap = {};
-    {}"#,
-        cpp_props.get_dictionary_info("Type").1,
-        INTERNAL_CODE_MAP
-    )
-}
-
-const INTERNAL_CODE_VALUE_INDEX: &'static str =
-    include_str!("./cpp_snippets/internal_code_val_idx.cpp");
+use crate::{cpp_snippets::*, cpp_types::*, props::CppProps};
 
 #[derive(Default)]
 pub struct CppState {
@@ -138,7 +112,7 @@ impl CppState {
 
     pub fn write_forward_declarations(&self) -> String {
         if self.cpp_types.len() <= 1 {
-            return "".to_string();
+            return String::new();
         }
 
         let forward = (&self.cpp_types)
@@ -164,7 +138,7 @@ impl CppState {
             })
             .collect::<String>();
         if aliases.is_empty() {
-            String::new()
+            aliases
         } else {
             format!("\n// aliases\n{}", aliases)
         }
