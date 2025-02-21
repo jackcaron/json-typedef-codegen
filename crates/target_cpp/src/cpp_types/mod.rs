@@ -31,23 +31,13 @@ pub enum CppTypes {
 }
 
 impl CppTypes {
-    pub fn needs_forward_declaration(&self) -> bool {
+    pub fn type_prefix(&self) -> Option<&'static str> {
         match &self {
-            Self::Enum(_)
-            | Self::Struct(_)
-            | Self::Discriminator(_)
-            | Self::DiscriminatorVariant(_) => true,
-            _ => false,
-        }
-    }
-
-    pub fn type_prefix(&self) -> &'static str {
-        match &self {
-            Self::Enum(_) => CppEnum::get_prefix(),
-            Self::Struct(_) => CppStruct::get_prefix(),
-            Self::Discriminator(_) => CppDiscriminator::get_prefix(),
-            Self::DiscriminatorVariant(_) => CppDiscriminatorVariant::get_prefix(),
-            _ => panic!("type doesn't have a prefix"),
+            Self::Enum(_) => Some(CppEnum::get_prefix()),
+            Self::Struct(_) => Some(CppStruct::get_prefix()),
+            Self::Discriminator(_) => Some(CppDiscriminator::get_prefix()),
+            Self::DiscriminatorVariant(_) => Some(CppDiscriminatorVariant::get_prefix()),
+            _ => None,
         }
     }
 

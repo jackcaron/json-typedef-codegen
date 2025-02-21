@@ -1,6 +1,6 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::{INTERNAL_CODE_DISC, INTERNAL_CODE_VARY};
+use crate::cpp_snippets::{DESC_DECL, INTERNAL_CODE_DISC, INTERNAL_CODE_VARY};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -78,7 +78,7 @@ impl CppDiscriminator {
     pub fn declare(&self) -> String {
         let variant_types = self.get_variante_types();
         let enum_items = self.get_enum_type_items();
-        include_str!("../cpp_snippets/disc_declare.cpp")
+        DESC_DECL
             .replace("$DISCRIMINATOR_NAME$", &self.name)
             .replace("$VARIANT_NAMES$", &variant_types)
             .replace("$TYPE_VALUES$", &enum_items)

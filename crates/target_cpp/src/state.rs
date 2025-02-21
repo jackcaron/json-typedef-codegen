@@ -119,14 +119,15 @@ impl CppState {
             .iter()
             .enumerate()
             .filter_map(|(i, t)| {
-                if t.needs_forward_declaration() {
-                    Some(format!("{} {};\n", t.type_prefix(), self.names[i]))
-                } else {
-                    None
-                }
+                t.type_prefix()
+                    .map(|pf| format!("{} {};\n", pf, self.names[i]))
             })
             .collect::<String>();
-        format!("\n// forward declarations\n{}", forward)
+        if forward.is_empty() {
+            String::new()
+        } else {
+            format!("\n// forward declarations\n{}", forward)
+        }
     }
 
     pub fn write_alias(&self) -> String {
