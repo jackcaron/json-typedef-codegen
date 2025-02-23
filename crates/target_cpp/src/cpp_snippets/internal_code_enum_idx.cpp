@@ -12,7 +12,7 @@
         ++index;
       }
       const auto err = std::format("Invalid value \"{}\" for {}",
-                                   value, enumName);
+                                   val, enumName);
       return makeJsonError(JsonErrorTypes::Invalid, err);
     }
     else {

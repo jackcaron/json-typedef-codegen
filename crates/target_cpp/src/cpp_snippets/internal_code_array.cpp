@@ -15,7 +15,7 @@
       auto converter = FromJson<Type>::convert;
       std::vector<Type> result;
       auto feach =
-        json_array_for_each(value, [&result](const auto &item) {
+        json_array_for_each(value, [&](const auto &item) {
           if (auto exp_res = converter(item); exp_res.has_value()) {
             result.emplace_back(std::move(exp_res.value()));
             return ExpType<void>();

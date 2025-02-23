@@ -15,7 +15,7 @@
       auto converter = FromJson<Type>::convert;
       JsonMap<Type> result;
       auto feach =
-        json_object_for_each(value, [&result](const auto key, const auto &val) {
+        json_object_for_each(value, [&](const auto key, const auto &val) {
           if (auto exp_res = converter(val); exp_res.has_value()) {
             auto [_iter, ok] = result.insert({ std::string(key), exp_res.value() });
             if (ok) {
