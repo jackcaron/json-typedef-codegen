@@ -74,6 +74,11 @@ namespace JsonTypedefCodeGen {
 
   // Expected Utils
   template <typename ResType>
+  constexpr ExpType<ResType> flatten_expected(ResType&& value) {
+    return ExpType<ResType>(std::move(value));
+  }
+
+  template <typename ResType>
   constexpr ExpType<ResType> flatten_expected(ExpType<ResType>&& value) {
     return value;
   }
@@ -89,7 +94,7 @@ namespace JsonTypedefCodeGen {
       if constexpr (std::is_void_v<ResType>) {
         return tmp;
       } else {
-        return flatten_expected(tmp.value());
+        return flatten_expected(std::move(tmp.value()));
       }
     } else {
       return UnexpJsonError(tmp.error());
