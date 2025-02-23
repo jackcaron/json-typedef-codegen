@@ -174,12 +174,49 @@ if (BUILD_TEST)
     else()
       message(FATAL_ERROR "need cmake-js to build the NAPI tests")
     endif()
-  else() # ENABLE_NAPI
+  else() #else  ENABLE_NAPI
+    # look for jtd-codegen binary
+    get_filename_component(TARGET_BASE "${CMAKE_SOURCE_DIR}/../target" REALPATH)
+    set(JTD_BIN "${TARGET_BASE}/release/jtd-codegen")
+    if (NOT EXISTS "${JTD_BIN}")
+      set(JTD_BIN "${TARGET_BASE}/debug/jtd-codegen")
+      if (NOT EXISTS "${JTD_BIN}")
+        message(FATAL_ERROR "jtd-codegen must be compiled")
+      endif()
+    endif()
+
+    file(GLOB_RECURSE SCHEMAS "tests/gtests/schemas/*.jtd.json")
+    get_filename_component(CFG_FILE "cpp_config.json" REALPATH BASE_DIR "${CMAKE_SOURCE_DIR}/tests/gtests")
+    set(GEN_DIR "${CMAKE_SOURCE_DIR}/tests/gtests/generated")
+
+    # generate temporary C++ files from schemas
+    set(SCHM_HEADERS "")
+    set(SCHM_SOURCE "")
+
+    foreach(schm ${SCHEMAS})
+      get_filename_component(baseName ${schm} NAME_WE)
+
+      set(EXP_FILE_CPP "${GEN_DIR}/${baseName}.cpp")
+      set(EXP_FILE_HPP "${GEN_DIR}/${baseName}.hpp")
+
+      add_custom_command(
+        OUTPUT "${EXP_FILE_CPP}" "${EXP_FILE_HPP}"
+        COMMAND mkdir
+        ARGS "-p" "${GEN_DIR}"
+        COMMAND ${JTD_BIN}
+        ARGS "${schm}" "--cpp-out" "${GEN_DIR}" "--cpp-props" "${CFG_FILE}"
+        DEPENDS ${schm} ${JTD_BIN}
+      )
+
+      list(APPEND SCHM_HEADERS ${EXP_FILE_HPP})
+      list(APPEND SCHM_SOURCE ${EXP_FILE_CPP})
+    endforeach()
+
     find_package(GTest)
-    file(GLOB_RECURSE TESTSRC "tests/gtests/*.cpp" "tests/gtests/*.hpp")
+    file(GLOB_RECURSE TESTSRC "tests/gtests/*.cpp")
 
     # add test options based on the build options
-    add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP})
+    add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
   endif()
 endif()
