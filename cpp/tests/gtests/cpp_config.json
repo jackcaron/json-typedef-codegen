@@ -1,6 +1,6 @@
 {
   "namespace":"test",
-  "guard":{"name":"TEST"},
+  "guard":"pragma",
   "include_data":"local",
   "include_reader":"system"
 }
