@@ -5,7 +5,7 @@
     $ENTRIES$
 
     template<typename JValue>
-    static ExpType<Vary> convert(const JValue &object) {
+    static ExpType<Vary> convert(const JValue& object) {
       Vary result;
       auto feach = json_object_for_each(object, [&result](auto key, auto val) {
           $VISITED$
