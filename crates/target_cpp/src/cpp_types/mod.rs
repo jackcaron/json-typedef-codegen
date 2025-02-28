@@ -23,11 +23,11 @@ pub enum CppTypes {
     Array(CppArray),
     Dictionary(CppDict),
     Nullable(CppNullable),
+    Alias(CppAlias),
     Enum(CppEnum),
     Struct(CppStruct),
-    Alias(CppAlias),
-    Discriminator(CppDiscriminator),
     DiscriminatorVariant(CppDiscriminatorVariant),
+    Discriminator(CppDiscriminator),
 }
 
 impl CppTypes {

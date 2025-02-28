@@ -8,6 +8,22 @@ pub fn create_entry_array(entries: &str, size: usize) -> String {
         .replace("$ENTRIES$", entries)
 }
 
+pub fn create_mandatory_indices(mindices: &Vec<usize>) -> String {
+    let str_midx = mindices
+        .iter()
+        .enumerate()
+        .map(|(j, idx)| {
+            let prefix = if j == 0 { "" } else { ", " };
+            format!("{}{}", prefix, idx)
+        })
+        .collect::<String>();
+    format!(
+        r#"static constexpr std::array<int, {}> mandatory_indices = {{ {} }};"#,
+        mindices.len(),
+        str_midx
+    )
+}
+
 pub fn deserialize_name(name: &str) -> String {
     format!("fromJson{}", name)
 }
@@ -33,7 +49,7 @@ pub fn get_complete_definition(name: &str) -> String {
     format!(
         r#"
 {} {{
-return FromJson<{}>::convert(value);
+  return FromJson<{}>::convert(value);
 }}
 "#,
         function_name(name, false),

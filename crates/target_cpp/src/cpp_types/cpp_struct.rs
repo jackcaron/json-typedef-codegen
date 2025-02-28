@@ -77,14 +77,29 @@ impl CppStruct {
             .collect::<String>()
     }
 
+    fn create_mandatory_indices(&self) -> String {
+        let midx: Vec<usize> = self
+            .fields
+            .iter()
+            .enumerate()
+            .filter_map(|(i, f)| match f.optional {
+                false => Some(i),
+                true => None,
+            })
+            .collect();
+        create_mandatory_indices(&midx)
+    }
+
     pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let clauses = self.create_switch_clauses();
         let entries = self.create_entry_array();
+        let mandatory_indices = self.create_mandatory_indices();
         let visited = create_visited_array(self.fields.len());
         INTERNAL_CODE_STRUCT
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
+            .replace("$MANDATORY$", &mandatory_indices)
             .replace("$VISITED$", &visited)
             .replace("$STRUCT_NAME$", &self.name)
             .replace("$CLAUSES$", &clauses)

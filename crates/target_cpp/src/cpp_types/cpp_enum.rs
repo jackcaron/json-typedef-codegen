@@ -1,6 +1,6 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::INTERNAL_CODE_ENUM_INDEX;
+use crate::cpp_snippets::{ENUM_DECL, INTERNAL_CODE_ENUM_INDEX};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -83,7 +83,7 @@ enum class {} {{
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses();
-        include_str!("../cpp_snippets/enum_from_json.cpp")
+        ENUM_DECL
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$ENUM_NAME$", &self.name)
