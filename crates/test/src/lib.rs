@@ -99,7 +99,7 @@ pub fn assert_std_test_case<T: Target>(
     let schema: SerdeSchema = serde_json::from_reader(schema).expect("deserialize schema");
     let schema: Schema = schema.try_into().expect("validate schema");
 
-    let (temp_dir, root_name) = generate_code(target, &schema);
+    let (temp_dir, _root_name) = generate_code(target, &schema);
 
     assert_stable(target_crate_base_dir, name, &temp_dir);
 
@@ -128,6 +128,7 @@ fn generate_code<T: Target>(target: &T, schema: &Schema) -> (tempfile::TempDir, 
     (tempdir, codegen_info.root_name)
 }
 
+#[allow(dead_code)]
 fn assert_roundtrip(
     target_crate_base_dir: &str,
     schema: &Schema,

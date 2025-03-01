@@ -32,6 +32,7 @@ impl SchemaAst {
 #[derive(Debug)]
 pub enum Ast {
     Ref {
+        #[allow(dead_code)]
         metadata: Metadata,
         definition: String,
     },
@@ -429,6 +430,7 @@ impl Ast {
         }
     }
 
+    #[allow(dead_code)]
     pub fn get_type(&self) -> &'static str {
         match self {
             Ast::Ref {

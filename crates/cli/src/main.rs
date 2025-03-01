@@ -1,6 +1,6 @@
 mod root_name;
 
-use anyhow::{anyhow, format_err, Context, Result};
+use anyhow::{format_err, Context, Result};
 use clap::{crate_version, load_yaml, App};
 use jtd::{Schema, SerdeSchema};
 use serde::Serialize;
