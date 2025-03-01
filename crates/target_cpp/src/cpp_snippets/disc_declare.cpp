@@ -19,19 +19,11 @@ public:
 
   constexpr Types type() const { return Types(m_value.index()); }
 
-  template<Types Tp> constexpr auto get() {
-    namespace DT = JsonTypedefCodeGen::Data;
-    if (auto ptr = std::get_if<size_t(Tp)>(&m_value); ptr != nullptr) {
-      return DT::OptRefW(DT::RefW(*ptr));
-    }
-    return DT::OptRefW();
+  template<Types Tp> auto get() {
+    return std::get_if<size_t(Tp)>(&m_value);
   }
 
-  template<Types Tp> constexpr auto get() const {
-    namespace DT = JsonTypedefCodeGen::Data;
-    if (auto ptr = std::get_if<size_t(Tp)>(&m_value); ptr != nullptr) {
-      return DT::OptRefW(DT::RefW(*ptr));
-    }
-    return DT::OptRefW();
+  template<Types Tp> const auto get() const {
+    return std::get_if<size_t(Tp)>(&m_value);
   }
 };

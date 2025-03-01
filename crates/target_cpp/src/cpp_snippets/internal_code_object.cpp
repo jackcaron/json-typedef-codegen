@@ -1,9 +1,11 @@
 
   template <typename JValue, typename Cb>
-  auto json_object_for_each(const JValue &value, Cb cb) {
-    if constexpr (std::is_same_v<JValue, Reader::JsonValue>) {
+  constexpr ExpType<void> json_object_for_each(const JValue &value, Cb cb) {
+    if constexpr (std::is_same_v<JValue, Reader::JsonValue> || std::is_same_v<JValue, Reader::JsonObject>) {
       return Reader::json_object_for_each(value, cb);
-    } else if constexpr (std::is_same_v<JValue, Data::JsonValue>) {
+    }
+    else {
+      // std::is_same_v<JValue, Data::JsonValue>
       return Data::json_object_for_each(value, cb);
     }
   }

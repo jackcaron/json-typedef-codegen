@@ -1,4 +1,24 @@
 
+
+  ExpType<std::string> getDiscValue(const Data::JsonObject& object,
+                                    const std::string_view disc,
+                                    const std::string_view name) {
+    auto& inner = object.internal();
+    const auto fnd = inner.find(std::string(disc));
+    if (fnd == inner.end()) {
+      auto err = format("missing key \"{}\" for {}", disc, name);
+      return makeJsonError(JsonErrorTypes::Invalid, err);
+    }
+
+    const auto opt_str = fnd->second.read_str();
+    if (opt_str.has_value()) {
+      return std::string(opt_str.value());
+    }
+
+    const auto err = format("expected string value for {}", disc);
+    return makeJsonError(JsonErrorTypes::Invalid, err);
+  }
+
   constexpr ExpType<int> getValueIndex(const std::string_view value,
                                        const std::span<const std::string_view> entries,
                                        const std::string_view structName) {
