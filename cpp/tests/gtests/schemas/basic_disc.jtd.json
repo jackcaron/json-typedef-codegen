@@ -1,0 +1,19 @@
+{
+  "discriminator": "Type",
+  "mapping": {
+      "String": {
+          "properties": {
+              "baz": {
+                  "type": "string"
+              }
+          }
+      },
+      "Boolean": {
+          "properties": {
+              "quuz": {
+                  "type": "boolean"
+              }
+          }
+      }
+  }
+}

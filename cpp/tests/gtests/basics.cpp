@@ -1,5 +1,6 @@
 #ifdef USE_SIMD
 
+#include "generated/basic_disc.hpp"
 #include "generated/basic_enum.hpp"
 #include "generated/basic_struct.hpp"
 #include "simd_reader.hpp"
@@ -7,9 +8,9 @@
 #include <array>
 #include <gtest/gtest.h>
 
-// TO KEEP IN THE END:
+///***************************
 #include <iostream>
-// *****************
+///***************************
 
 using namespace JsonTypedefCodeGen;
 using namespace simdjson;
@@ -21,6 +22,12 @@ namespace {
   using ExpJsonValue = ExpType<Reader::JsonValue>;
   using ExpBasicEnum = ExpType<test::BasicEnum>;
   using ExpBasicStruct = ExpType<test::BasicStruct>;
+  using ExpBasicDisc = ExpType<test::BasicDisc>;
+
+  void exp_error(const JsonError& err, const JsonError& exp_err) {
+    EXPECT_EQ(err.type, exp_err.type);
+    EXPECT_EQ(err.message, exp_err.message);
+  }
 
   ExpBasicEnum get_exp_basic_enum(const padded_str& json_str) {
     ondemand::parser parser;
@@ -53,6 +60,16 @@ namespace {
                                 }));
   }
 
+  ExpBasicDisc get_exp_basic_disc(const padded_str& json_str) {
+    ondemand::parser parser;
+    auto doc = parser.iterate(json_str);
+
+    return flatten_expected(Reader::simdjson_root_value(doc.get_value())
+                                .transform([](const auto& val) {
+                                  return test::fromJsonBasicDisc(val);
+                                }));
+  }
+
 } // namespace
 
 TEST(GEN_BASIC, enum) {
@@ -79,8 +96,9 @@ TEST(GEN_BASIC, enum) {
   {
     auto exp_be = get_exp_basic_enum(R"( ["Gary"] )"_padded);
     EXPECT_FALSE(exp_be.has_value());
-    EXPECT_EQ(exp_be.error().type, JsonErrorTypes::Invalid);
-    EXPECT_EQ(exp_be.error().message, "Invalid value \"Gary\" for BasicEnum"sv);
+    exp_error(exp_be.error(),
+              JsonError(JsonErrorTypes::Invalid,
+                        "Invalid value \"Gary\" for BasicEnum"sv));
   }
 }
 
@@ -126,8 +144,142 @@ TEST(GEN_BASIC, struct) {
       } )"_padded);
 
     EXPECT_FALSE(exp_bs.has_value());
-    EXPECT_EQ(exp_bs.error().type, JsonErrorTypes::String);
-    EXPECT_EQ(exp_bs.error().message, "Missing key \"baz\" for BasicStruct");
+    exp_error(exp_bs.error(),
+              JsonError(JsonErrorTypes::String,
+                        "Missing key \"baz\" for BasicStruct"sv));
+  }
+  // duplicate "bar" item
+  {
+    auto exp_bs = get_exp_basic_struct(
+        R"( {
+        "bar": "Bar",
+        "baz": [],
+        "foo": false,
+        "bar": "Bad"
+      } )"_padded);
+
+    EXPECT_FALSE(exp_bs.has_value());
+    exp_error(exp_bs.error(),
+              JsonError(JsonErrorTypes::Invalid, "Duplicated key bar"sv));
+  }
+  // invalid value
+  {
+    auto exp_bs = get_exp_basic_struct(
+        R"( {
+        "boo": "Bar"
+      } )"_padded);
+
+    EXPECT_FALSE(exp_bs.has_value());
+    exp_error(exp_bs.error(),
+              JsonError(JsonErrorTypes::Invalid,
+                        "Invalid key \"boo\" in BasicStruct"sv));
+  }
+}
+
+TEST(GEN_BASIC, discriminator) {
+  using Types = test::BasicDisc::Types;
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "Boolean",
+        "quuz": false
+        } )"_padded);
+
+    EXPECT_TRUE(exp_bd.has_value());
+
+    auto pd = std::move(exp_bd.value());
+    EXPECT_EQ(pd.type(), Types::Boolean);
+
+    auto pdb = pd.get<Types::Boolean>();
+    EXPECT_NE(pdb, nullptr);
+    EXPECT_FALSE(pdb->quuz);
+
+    EXPECT_EQ(pd.get<Types::String>(), nullptr);
+  }
+  // "Type" not specified first
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "quuz": true,
+        "Type": "Boolean"
+        } )"_padded);
+
+    EXPECT_TRUE(exp_bd.has_value());
+
+    auto pd = std::move(exp_bd.value());
+    EXPECT_EQ(pd.type(), Types::Boolean);
+
+    auto pdb = pd.get<Types::Boolean>();
+    EXPECT_NE(pdb, nullptr);
+    EXPECT_TRUE(pdb->quuz);
+
+    EXPECT_EQ(pd.get<Types::String>(), nullptr);
+  }
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "String",
+        "baz": "Baz"
+        } )"_padded);
+
+    EXPECT_TRUE(exp_bd.has_value());
+
+    auto pd = std::move(exp_bd.value());
+    EXPECT_EQ(pd.type(), Types::String);
+    EXPECT_EQ(pd.get<Types::Boolean>(), nullptr);
+
+    auto pds = pd.get<Types::String>();
+    EXPECT_NE(pds, nullptr);
+    EXPECT_EQ(pds->baz, "Baz"sv);
+  }
+  // invalid "Type"
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "Bob"
+        } )"_padded);
+
+    EXPECT_FALSE(exp_bd.has_value());
+    exp_error(exp_bd.error(), JsonError(JsonErrorTypes::Invalid,
+                                        "Invalid key \"Bob\" in BasicDisc"sv));
+  }
+  // missing "bar"
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "String"
+        } )"_padded);
+
+    EXPECT_FALSE(exp_bd.has_value());
+    exp_error(exp_bd.error(),
+              JsonError(JsonErrorTypes::String,
+                        "Missing key \"baz\" for BasicDiscString"sv));
+  }
+  // duplicated key
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "String",
+        "baz": "Baz",
+        "baz": "Boz"
+        } )"_padded);
+
+    EXPECT_FALSE(exp_bd.has_value());
+    exp_error(exp_bd.error(),
+              JsonError(JsonErrorTypes::String, "Duplicated key baz"sv));
+  }
+  // unknow key in "Boolean"
+  {
+    auto exp_bd = get_exp_basic_disc(
+        R"( {
+        "Type": "Boolean",
+        "quu": false
+        } )"_padded);
+
+    EXPECT_FALSE(exp_bd.has_value());
+    exp_error(exp_bd.error(),
+              JsonError(JsonErrorTypes::Invalid,
+                        "Invalid key \"quu\" in BasicDiscBoolean"sv));
   }
 }
 
