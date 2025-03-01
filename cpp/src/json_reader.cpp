@@ -2,6 +2,8 @@
 #include "internal.hpp"
 #include "spec_reader.hpp"
 
+#include <format>
+
 namespace JsonTypedefCodeGen::Reader {
 
   namespace Specialization {
@@ -183,7 +185,11 @@ namespace JsonTypedefCodeGen::Reader {
 
       const auto& [key, val] = item.value();
       if (const auto tmp = val.clone(); tmp.has_value()) [[likely]] {
-        result.insert({key, tmp.value()});
+        const auto [it, ok] = result.insert({key, tmp.value()});
+        if (!ok) {
+          const auto err = format("Duplicated key {}", key);
+          return makeJsonError(JsonErrorTypes::String, err);
+        }
       } else {
         return std::unexpected(item.error());
       }
