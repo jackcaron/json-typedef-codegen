@@ -8,10 +8,6 @@
 #include <array>
 #include <gtest/gtest.h>
 
-///***************************
-#include <iostream>
-///***************************
-
 using namespace JsonTypedefCodeGen;
 using namespace simdjson;
 using namespace std::string_view_literals;
@@ -72,7 +68,7 @@ namespace {
 
 } // namespace
 
-TEST(GEN_BASIC, enum) {
+TEST(BASIC, enum_ok) {
   {
     auto exp_be = get_exp_basic_enum(R"( [] )"_padded);
     EXPECT_FALSE(exp_be.has_value());
@@ -93,6 +89,9 @@ TEST(GEN_BASIC, enum) {
     EXPECT_TRUE(exp_be.has_value());
     EXPECT_EQ(exp_be.value(), test::BasicEnum::Foo);
   }
+}
+
+TEST(BASIC, enum_err) {
   {
     auto exp_be = get_exp_basic_enum(R"( ["Gary"] )"_padded);
     EXPECT_FALSE(exp_be.has_value());
@@ -102,7 +101,7 @@ TEST(GEN_BASIC, enum) {
   }
 }
 
-TEST(GEN_BASIC, struct) {
+TEST(BASIC, struct_ok) {
   {
     auto exp_bs = get_exp_basic_struct(
         R"( {
@@ -135,6 +134,9 @@ TEST(GEN_BASIC, struct) {
     EXPECT_FALSE(bs.baz[1]);
     EXPECT_TRUE(bs.foo);
   }
+}
+
+TEST(BASIC, struct_err) {
   // missing mandatory field "baz"
   {
     auto exp_bs = get_exp_basic_struct(
@@ -164,10 +166,7 @@ TEST(GEN_BASIC, struct) {
   }
   // invalid value
   {
-    auto exp_bs = get_exp_basic_struct(
-        R"( {
-        "boo": "Bar"
-      } )"_padded);
+    auto exp_bs = get_exp_basic_struct(R"( { "boo": "Bar" } )"_padded);
 
     EXPECT_FALSE(exp_bs.has_value());
     exp_error(exp_bs.error(),
@@ -176,7 +175,7 @@ TEST(GEN_BASIC, struct) {
   }
 }
 
-TEST(GEN_BASIC, discriminator) {
+TEST(BASIC, discriminator_ok) {
   using Types = test::BasicDisc::Types;
   {
     auto exp_bd = get_exp_basic_disc(
@@ -232,23 +231,21 @@ TEST(GEN_BASIC, discriminator) {
     EXPECT_NE(pds, nullptr);
     EXPECT_EQ(pds->baz, "Baz"sv);
   }
+}
+
+TEST(BASIC, discriminator_err) {
+  using Types = test::BasicDisc::Types;
   // invalid "Type"
   {
-    auto exp_bd = get_exp_basic_disc(
-        R"( {
-        "Type": "Bob"
-        } )"_padded);
+    auto exp_bd = get_exp_basic_disc(R"( { "Type": "Bob" } )"_padded);
 
     EXPECT_FALSE(exp_bd.has_value());
     exp_error(exp_bd.error(), JsonError(JsonErrorTypes::Invalid,
                                         "Invalid key \"Bob\" in BasicDisc"sv));
   }
-  // missing "bar"
+  // missing "baz"
   {
-    auto exp_bd = get_exp_basic_disc(
-        R"( {
-        "Type": "String"
-        } )"_padded);
+    auto exp_bd = get_exp_basic_disc(R"( { "Type": "String" } )"_padded);
 
     EXPECT_FALSE(exp_bd.has_value());
     exp_error(exp_bd.error(),
@@ -270,11 +267,8 @@ TEST(GEN_BASIC, discriminator) {
   }
   // unknow key in "Boolean"
   {
-    auto exp_bd = get_exp_basic_disc(
-        R"( {
-        "Type": "Boolean",
-        "quu": false
-        } )"_padded);
+    auto exp_bd =
+        get_exp_basic_disc(R"( { "Type": "Boolean", "quu": false } )"_padded);
 
     EXPECT_FALSE(exp_bd.has_value());
     exp_error(exp_bd.error(),
