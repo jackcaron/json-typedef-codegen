@@ -15,6 +15,8 @@ pub struct CppState {
     cpp_types: Vec<CppTypes>,
     cpp_type_indices: BTreeMap<String, usize>, // type name to index in "cpp_types"
 
+    root_type: Option<String>,
+
     // internal code
     require_get_enum_index_code: bool,
     require_get_value_index_code: bool,
@@ -153,19 +155,36 @@ impl CppState {
         format!("\n// declarations{}", declares)
     }
 
+    fn get_root_type(&self) -> &CppTypes {
+        let opt_ct = match &self.root_type {
+            None => panic!("Missing root type"),
+            Some(name) => self
+                .get_index_from_name(name)
+                .map(|idx| self.get_cpp_type_from_index(idx)),
+        };
+        match opt_ct {
+            Some(ct) => ct,
+            None => panic!("Root type invalid"),
+        }
+    }
+
     pub fn prototype(&self, cpp_props: &CppProps) -> String {
-        let protos = &(self.cpp_types)
-            .iter()
-            .filter_map(|t| t.prototype(self, cpp_props))
-            .collect::<String>();
-        format!("\n// prototypes{}", protos)
+        match self.get_root_type().prototype(self, cpp_props) {
+            Some(proto) => format!("\n// prototypes{}", proto),
+            None => unreachable!(),
+        }
     }
 
     pub fn define(&self, cpp_props: &CppProps) -> String {
-        self.cpp_types
-            .iter()
-            .filter_map(|t| t.define(self, cpp_props))
-            .collect::<String>()
+        // self.cpp_types
+        //     .iter()
+        //     .filter_map(|t| t.define(self, cpp_props))
+        //     .collect::<String>()
+
+        match self.get_root_type().define(self, cpp_props) {
+            Some(proto) => format!("\n// prototypes{}", proto),
+            None => unreachable!(),
+        }
     }
 
     pub fn parse_primitive(
@@ -272,12 +291,14 @@ impl CppState {
     }
 
     pub fn parse_enum(&mut self, name: String, members: Vec<target::EnumMember>, meta: Metadata) {
+        self.set_root_type(&name);
         let cpp_type = CppTypes::Enum(CppEnum::new(name.clone(), members));
         self.toggle_enum_index_code();
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
     pub fn parse_struct(&mut self, name: String, fields: Vec<target::Field>, meta: Metadata) {
+        self.set_root_type(&name);
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
         self.toggle_value_index_code();
         let cpp_type = CppTypes::Struct(CppStruct::new(name.clone(), fields, cpp_type_indices));
@@ -292,6 +313,7 @@ impl CppState {
         tag_field_name: String,
         meta: Metadata,
     ) {
+        self.set_root_type(&name);
         let cpp_type_indices: Vec<usize> = variants
             .iter()
             .map(|v| self.add_incomplete(&v.type_name).1)
@@ -405,5 +427,12 @@ impl CppState {
             .iter()
             .map(|f| self.add_incomplete(&f.type_).1)
             .collect()
+    }
+
+    fn set_root_type(&mut self, name: &str) {
+        match self.root_type {
+            Some(_) => {}
+            None => self.root_type = Some(name.to_string()),
+        }
     }
 }

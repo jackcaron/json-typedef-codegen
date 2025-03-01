@@ -107,15 +107,16 @@ impl CppDiscriminator {
         create_entry_array(&items, self.variants.len())
     }
 
-    fn create_switch_clauses(&self) -> String {
+    fn create_switch_clauses(&self, cpp_props: &CppProps) -> String {
         self.variants
             .iter()
             .enumerate()
             .map(|(i, v)| {
                 format!(
                     r#"
-                case {}: return FromJson<{}>::convert(object).transform(toDisc);"#,
-                    i, v.type_name
+        case {}: return FromJson<{}>::convert(object).transform(cast);"#,
+                    i,
+                    cpp_props.get_namespaced_name(&v.type_name)
                 )
             })
             .collect::<String>()
@@ -124,11 +125,11 @@ impl CppDiscriminator {
     pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
-        let clauses = self.create_switch_clauses();
+        let clauses = self.create_switch_clauses(cpp_props);
         INTERNAL_CODE_DISC
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
-            .replace("$TAG_KEY$", &self.tag_field_name)
+            .replace("$TAG_KEY$", &self.tag_json_name)
             .replace("$DISC_NAME$", &self.name)
             .replace("$CLAUSES$", &clauses)
     }
@@ -225,7 +226,7 @@ struct {} {{
             .map(|(i, f)| {
                 format!(
                     r#"
-                  case {}: convert_and_set(result.{}, val); break;"#,
+                  case {}: return convert_and_set(result.{}, val); break;"#,
                     i + 1,
                     f.name
                 )
@@ -236,11 +237,13 @@ struct {} {{
     pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
+        let mandatory_indices = create_mandatory_indices(&self.fields, 1);
         let visited = create_visited_array(self.fields.len() + 1);
         let clauses = self.create_switch_clauses();
         INTERNAL_CODE_VARY
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
+            .replace("$MANDATORY$", &mandatory_indices)
             .replace("$VISITED$", &visited)
             .replace("$VARY_NAME$", &self.name)
             .replace("$CLAUSES$", &clauses)

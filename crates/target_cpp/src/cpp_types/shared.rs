@@ -1,3 +1,5 @@
+use jtd_codegen::target::Field;
+
 use crate::cpp_snippets::ENTRIES_ARRAY;
 
 pub type TypeIndex = usize;
@@ -8,18 +10,28 @@ pub fn create_entry_array(entries: &str, size: usize) -> String {
         .replace("$ENTRIES$", entries)
 }
 
-pub fn create_mandatory_indices(mindices: &Vec<usize>) -> String {
-    let str_midx = mindices
+pub fn create_mandatory_indices(fields: &Vec<Field>, idx_offset: usize) -> String {
+    let midx: Vec<usize> = fields
+        .iter()
+        .enumerate()
+        .filter_map(|(i, f)| match f.optional {
+            false => Some(i),
+            true => None,
+        })
+        .collect();
+
+    let str_midx = midx
         .iter()
         .enumerate()
         .map(|(j, idx)| {
             let prefix = if j == 0 { "" } else { ", " };
-            format!("{}{}", prefix, idx)
+            format!("{}{}", prefix, idx + idx_offset)
         })
         .collect::<String>();
+
     format!(
         r#"static constexpr std::array<int, {}> mandatory_indices = {{ {} }};"#,
-        mindices.len(),
+        midx.len(),
         str_midx
     )
 }
