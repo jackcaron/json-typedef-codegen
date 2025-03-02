@@ -47,10 +47,6 @@ impl CppState {
         }
     }
 
-    pub fn get_cpp_type_from_index(&self, idx: usize) -> &CppTypes {
-        &(self.cpp_types[idx])
-    }
-
     pub fn write_include_files(&self, cpp_props: &CppProps) -> String {
         cpp_props.get_codegen_includes()
             + &((&self.include_files)
@@ -160,7 +156,7 @@ impl CppState {
             None => panic!("Missing root type"),
             Some(name) => self
                 .get_index_from_name(name)
-                .map(|idx| self.get_cpp_type_from_index(idx)),
+                .map(|idx| &(self.cpp_types[idx])),
         };
         match opt_ct {
             Some(ct) => ct,
@@ -176,13 +172,8 @@ impl CppState {
     }
 
     pub fn define(&self, cpp_props: &CppProps) -> String {
-        // self.cpp_types
-        //     .iter()
-        //     .filter_map(|t| t.define(self, cpp_props))
-        //     .collect::<String>()
-
         match self.get_root_type().define(self, cpp_props) {
-            Some(proto) => format!("\n// prototypes{}", proto),
+            Some(proto) => proto,
             None => unreachable!(),
         }
     }
