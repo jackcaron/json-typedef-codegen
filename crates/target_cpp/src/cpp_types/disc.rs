@@ -176,17 +176,7 @@ impl CppDiscriminatorVariant {
     }
 
     pub fn declare(&self) -> String {
-        let fields = (&self.fields)
-            .iter()
-            .map(|f| format!("  {} {};\n", f.type_, f.name))
-            .collect::<String>();
-        format!(
-            r#"
-struct {} {{
-{}}};
-"#,
-            self.name, fields
-        )
+        create_struct_from_fields(&self.name, &self.fields)
     }
 
     pub fn prototype(&self) -> String {
@@ -199,9 +189,7 @@ struct {} {{
             .iter()
             .enumerate()
             .map(|(i, f)| {
-                let prefix = if i == 0 {
-                    ""
-                } else if (i % 5) == 0 {
+                let prefix = if i != 0 && (i % 5) == 0 {
                     ",\n        "
                 } else {
                     ", "
@@ -209,29 +197,11 @@ struct {} {{
                 format!("{}\"{}\"sv", prefix, f.json_name)
             })
             .collect::<String>();
-        format!(
-            r#"static constexpr std::array<std::string_view, {}> entries = {{{{
-          "{}"sv, {}
-        }}}};"#,
-            self.fields.len() + 1,
-            self.tag_json_name,
-            items
-        )
-    }
 
-    fn create_switch_clauses(&self) -> String {
-        self.fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                format!(
-                    r#"
-                  case {}: return convert_and_set(result.{}, val); break;"#,
-                    i + 1,
-                    f.name
-                )
-            })
-            .collect::<String>()
+        create_entry_array(
+            &format!("\"{}\"sv{}", self.tag_json_name, items),
+            self.fields.len() + 1,
+        )
     }
 
     pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
@@ -239,7 +209,7 @@ struct {} {{
         let entries = self.create_entry_array();
         let mandatory_indices = create_mandatory_indices(&self.fields, 1);
         let visited = create_visited_array(self.fields.len() + 1);
-        let clauses = self.create_switch_clauses();
+        let clauses = create_switch_clauses(&self.fields, 1);
         INTERNAL_CODE_VARY
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)

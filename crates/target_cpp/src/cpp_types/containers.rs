@@ -3,20 +3,26 @@ use crate::props::CppProps;
 use crate::state::CppState;
 
 #[derive(Debug, PartialEq)]
-pub struct CppArray(TypeIndex, String);
+pub struct CppArray {
+    idx: TypeIndex,
+    name: String,
+}
 
 impl CppArray {
     pub fn new(idx: TypeIndex, name: String) -> CppArray {
-        CppArray(idx, name)
+        CppArray { idx, name }
     }
 }
 
 #[derive(Debug, PartialEq)]
-pub struct CppDict(Option<TypeIndex>, String);
+pub struct CppDict {
+    opt_idx: Option<TypeIndex>,
+    name: String,
+}
 
 impl CppDict {
     pub fn new(opt_idx: Option<TypeIndex>, name: String) -> CppDict {
-        CppDict(opt_idx, name)
+        CppDict { opt_idx, name }
     }
 
     pub fn get_set_internal_function(cpp_props: &CppProps) -> String {
@@ -36,19 +42,22 @@ template<> struct FromJson<{}> {{
 }
 
 #[derive(Debug, PartialEq)]
-pub struct CppNullable(TypeIndex, String);
+pub struct CppNullable {
+    idx: TypeIndex,
+    name: String,
+}
 
 impl CppNullable {
     pub fn new(idx: TypeIndex, name: String) -> CppNullable {
-        CppNullable(idx, name)
+        CppNullable { idx, name }
     }
 
     fn function_name(&self) -> String {
-        format!("fromJsonNullable{}", self.1)
+        format!("fromJsonNullable{}", self.name)
     }
 
     fn get_full_name(&self, cpp_state: &CppState) -> String {
-        let uptr_name = format!("std::unique_ptr<{}>", self.1);
+        let uptr_name = format!("std::unique_ptr<{}>", self.name);
         cpp_state.get_aliased_name(&uptr_name).to_string()
     }
 

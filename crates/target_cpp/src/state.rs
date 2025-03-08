@@ -87,9 +87,13 @@ impl CppState {
             return String::new();
         }
 
-        let mut intern_code = INTERNAL_CODE_HEADER.to_string()
-            + &(INTERNAL_CODE_ARRAY.to_string())
-            + &get_from_json_dictionary_converter(cpp_props);
+        let mut intern_code = INTERNAL_CODE_HEADER.to_string();
+        if self.require_array_internal_code {
+            intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
+        }
+        if self.require_map_internal_code {
+            intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
+        }
         if self.require_get_enum_index_code {
             intern_code = intern_code + CppEnum::get_enum_index_code();
         }
@@ -143,12 +147,18 @@ impl CppState {
         }
     }
 
+    pub fn conclude(&mut self) {}
+
     pub fn declare(&self, cpp_props: &CppProps) -> String {
         let declares = (&self.cpp_types)
             .iter()
             .filter_map(|t| t.declare(self, cpp_props))
             .collect::<String>();
-        format!("\n// declarations{}", declares)
+        if declares.is_empty() {
+            String::new()
+        } else {
+            format!("\n// declarations{}", declares)
+        }
     }
 
     fn get_root_type(&self) -> &CppTypes {
@@ -167,14 +177,14 @@ impl CppState {
     pub fn prototype(&self, cpp_props: &CppProps) -> String {
         match self.get_root_type().prototype(self, cpp_props) {
             Some(proto) => format!("\n// prototypes{}", proto),
-            None => unreachable!(),
+            None => String::new(),
         }
     }
 
     pub fn define(&self, cpp_props: &CppProps) -> String {
         match self.get_root_type().define(self, cpp_props) {
             Some(proto) => proto,
-            None => unreachable!(),
+            None => String::new(),
         }
     }
 
@@ -238,9 +248,8 @@ impl CppState {
                 }
             }
             target::Expr::Empty => {
-                self.add_include_file("<optional>");
                 self.require_json_raw_data_internal_code = true;
-                "std::optional<JsonTypedefCodeGen::Data::JsonValue>".to_string()
+                "JsonTypedefCodeGen::Data::JsonValue".to_string()
             }
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
@@ -276,6 +285,7 @@ impl CppState {
     }
 
     pub fn parse_alias(&mut self, name: String, type_: String, meta: Metadata) {
+        self.set_root_type(&name);
         let (_, _) = self.add_incomplete(&type_);
         let cpp_type = CppTypes::Alias(CppAlias::new(name.clone(), type_.clone()));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
@@ -290,6 +300,7 @@ impl CppState {
 
     pub fn parse_struct(&mut self, name: String, fields: Vec<target::Field>, meta: Metadata) {
         self.set_root_type(&name);
+        self.require_map_internal_code = true;
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
         self.toggle_value_index_code();
         let cpp_type = CppTypes::Struct(CppStruct::new(name.clone(), fields, cpp_type_indices));
@@ -305,6 +316,7 @@ impl CppState {
         meta: Metadata,
     ) {
         self.set_root_type(&name);
+        self.require_map_internal_code = true;
         let cpp_type_indices: Vec<usize> = variants
             .iter()
             .map(|v| self.add_incomplete(&v.type_name).1)

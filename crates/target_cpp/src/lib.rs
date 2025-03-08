@@ -63,7 +63,7 @@ impl Target {
     ) -> jtd_codegen::Result<Option<String>> {
         write_codegen_version(out)?;
 
-        writeln!(out, "#include \"{}\"", self.get_header_filename())?;
+        writeln!(out, "#include \"{}\"\n", self.get_header_filename())?;
         writeln!(out, "{}", state.write_src_include_files())?;
         writeln!(out, "{}", state.write_internal_code(&self.props))?;
         write!(out, "{}", self.props.open_namespace())?;
@@ -103,7 +103,7 @@ impl Target {
 
         write!(
             out,
-            "\n\n{}\n{}",
+            "\n{}\n{}",
             self.props.close_namespace(),
             self.props.get_footer()
         )?;
@@ -169,7 +169,10 @@ impl jtd_codegen::target::Target for Target {
                 out_dir.join(self.get_header_filename().as_str()).as_path(),
                 state,
             ),
-            target::Item::Preamble => Ok(None),
+            target::Item::Preamble => {
+                state.conclude();
+                Ok(None)
+            }
             target::Item::Postamble => self.write_source_file(out, state),
 
             target::Item::Alias {

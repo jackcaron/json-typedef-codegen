@@ -33,11 +33,7 @@ impl CppStruct {
     }
 
     pub fn declare(&self) -> String {
-        let fields = (&self.fields)
-            .iter()
-            .map(|f| format!("  {} {};\n", f.type_, f.name))
-            .collect::<String>();
-        format!("\nstruct {} {{\n{}}};\n", self.name, fields)
+        create_struct_from_fields(&self.name, &self.fields)
     }
 
     pub fn prototype(&self) -> String {
@@ -63,26 +59,12 @@ impl CppStruct {
         create_entry_array(&items, self.fields.len())
     }
 
-    fn create_switch_clauses(&self) -> String {
-        self.fields
-            .iter()
-            .enumerate()
-            .map(|(i, f)| {
-                format!(
-                    r#"
-                case {}: return convert_and_set(result.{}, val);"#,
-                    i, f.name
-                )
-            })
-            .collect::<String>()
-    }
-
     pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
-        let clauses = self.create_switch_clauses();
         let entries = self.create_entry_array();
         let mandatory_indices = create_mandatory_indices(&self.fields, 0);
         let visited = create_visited_array(self.fields.len());
+        let clauses = create_switch_clauses(&self.fields, 0);
         INTERNAL_CODE_STRUCT
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)

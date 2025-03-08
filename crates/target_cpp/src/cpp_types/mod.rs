@@ -14,7 +14,7 @@ pub use cpp_enum::CppEnum;
 pub use cpp_struct::CppStruct;
 pub use disc::{CppDiscriminator, CppDiscriminatorVariant};
 pub use primitives::Primitives;
-use shared::get_complete_definition;
+use shared::{get_complete_definition, prototype_name};
 
 #[derive(Debug, PartialEq)]
 pub enum CppTypes {
@@ -58,6 +58,7 @@ impl CppTypes {
             CppTypes::Discriminator(disc) => Some(disc.prototype()),
             CppTypes::DiscriminatorVariant(vary) => Some(vary.prototype()),
             CppTypes::Nullable(null) => Some(null.prototype(cpp_state)),
+            CppTypes::Alias(alias) => Some(prototype_name(&alias.get_name())),
             _ => None,
         }
     }
@@ -69,6 +70,7 @@ impl CppTypes {
             CppTypes::Discriminator(disc) => Some(get_complete_definition(&disc.get_name())),
             CppTypes::DiscriminatorVariant(vary) => Some(get_complete_definition(&vary.get_name())),
             CppTypes::Nullable(null) => Some(null.define(cpp_state)),
+            CppTypes::Alias(alias) => Some(get_complete_definition(&alias.get_name())),
             _ => None,
         }
     }
