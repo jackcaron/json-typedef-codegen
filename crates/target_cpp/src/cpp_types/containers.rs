@@ -52,10 +52,6 @@ impl CppNullable {
         CppNullable { idx, name }
     }
 
-    fn function_name(&self) -> String {
-        format!("fromJsonNullable{}", self.name)
-    }
-
     fn get_full_name(&self, cpp_state: &CppState) -> String {
         let uptr_name = format!("std::unique_ptr<{}>", self.name);
         cpp_state.get_aliased_name(&uptr_name).to_string()
@@ -65,9 +61,8 @@ impl CppNullable {
         let full_name = self.get_full_name(cpp_state);
         format!(
             r#"
-JsonTypedefCodeGen::ExpType<{}> {}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
-            full_name,
-            self.function_name()
+JsonTypedefCodeGen::ExpType<{}> fromJsonNullable{}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
+            full_name, full_name
         )
     }
 
@@ -75,13 +70,11 @@ JsonTypedefCodeGen::ExpType<{}> {}(const JsonTypedefCodeGen::Reader::JsonValue& 
         let full_name = self.get_full_name(cpp_state);
         format!(
             r#"
-ExpType<{}> {}(const Reader::JsonValue& value) {{
+ExpType<{}> fromJsonNullable{}(const Reader::JsonValue& value) {{
   return FromJson<{}>::convert(value);
 }}
 "#,
-            full_name,
-            self.function_name(),
-            full_name
+            full_name, full_name, full_name
         )
     }
 }

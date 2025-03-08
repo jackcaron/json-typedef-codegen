@@ -253,6 +253,13 @@ impl CppState {
             }
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
+
+                if let Some(rootname) = &self.root_type {
+                    if (*rootname) == sub_type {
+                        self.root_type = Some(name.clone());
+                    }
+                }
+
                 self.require_unique_ptr_internal_code = true;
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
