@@ -78,7 +78,16 @@ map_err_type(const simdjson::error_code err_type) {
 JsonTypes SimdValue::get_type() const { return map_simd_types(m_value.type()); }
 
 ExpType<bool> SimdValue::is_null() const {
-  return m_value.type() == json_type::null;
+  auto tp = map_simd_data(m_value.type());
+  if (tp.has_value()) {
+    switch (tp.value()) {
+    case json_type::null:
+      return true;
+    default:
+      break;
+    };
+  }
+  return false;
 }
 
 ExpType<bool> SimdValue::read_bool() const {
