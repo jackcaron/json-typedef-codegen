@@ -213,44 +213,12 @@ namespace JsonTypedefCodeGen::Reader {
   using ObjectForEachFn =
       std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
 
-  inline ExpType<void> json_array_for_each(const JsonArray& array,
-                                           ArrayForEachFn cb) {
-    for (auto item : array) {
-      if (auto exp = flatten_expected(item.transform(cb)); !exp.has_value()) {
-        return UnexpJsonError(exp.error());
-      }
-    }
-    return ExpType<void>();
-  }
+  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb);
+  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb);
 
-  inline ExpType<void> json_array_for_each(const JsonValue& value,
-                                           ArrayForEachFn cb) {
-    return flatten_expected(
-        value.read_array().transform([&cb](const auto& array) {
-          return json_array_for_each(array, cb);
-        }));
-  }
-
-  inline ExpType<void> json_object_for_each(const JsonObject& object,
-                                            ObjectForEachFn cb) {
-    for (auto item : object) {
-      auto exp = flatten_expected(item.transform([&cb](auto& pair) {
-        const auto [key, val] = std::move(pair);
-        return cb(key, val);
-      }));
-      if (!exp.has_value()) {
-        return UnexpJsonError(exp.error());
-      }
-    }
-    return ExpType<void>();
-  }
-
-  inline ExpType<void> json_object_for_each(const JsonValue& value,
-                                            ObjectForEachFn cb) {
-    return flatten_expected(
-        value.read_object().transform([&cb](const auto& object) {
-          return json_object_for_each(object, cb);
-        }));
-  }
+  ExpType<void> json_object_for_each(const JsonObject& object,
+                                     ObjectForEachFn cb);
+  ExpType<void> json_object_for_each(const JsonValue& value,
+                                     ObjectForEachFn cb);
 
 } // namespace JsonTypedefCodeGen::Reader
