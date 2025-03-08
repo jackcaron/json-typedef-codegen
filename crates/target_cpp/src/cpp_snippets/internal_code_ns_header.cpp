@@ -7,12 +7,12 @@ namespace {
 
   template <typename Type>
   ExpType<void> convert_and_set(Type &dst, const Reader::JsonValue &value) {
-    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
+    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = std::move(v); });
   }
 
   template <typename Type>
   ExpType<void> convert_and_set(Type &dst, const Data::JsonValue &value) {
-    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = v; });
+    return FromJson<Type>::convert(value).transform([&dst](auto v) { dst = std::move(v); });
   }
 
   template <typename Type>

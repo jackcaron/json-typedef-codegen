@@ -32,6 +32,6 @@
       return chain_void_expected(
         feach,
         visited_mandatory(mandatory_indices, visited, entries, st_name)
-      ).transform([res = std::move(result)]() { return res; });
+      ).transform([&result]() { return std::move(result); });
     }
   };
