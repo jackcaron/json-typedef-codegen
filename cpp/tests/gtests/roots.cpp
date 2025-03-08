@@ -51,7 +51,7 @@ namespace {
 
 } // namespace
 
-TEST(Root, empty) {
+TEST(ROOT, empty) {
   {
     auto exp_empty = get_exp_empty(R"( [] )"_padded);
     EXPECT_TRUE(exp_empty.has_value());
@@ -109,7 +109,7 @@ TEST(Root, empty) {
   }
 }
 
-TEST(Root, string) {
+TEST(ROOT, string) {
   {
     auto exp_str = get_exp_string(R"( [] )"_padded);
     EXPECT_FALSE(exp_str.has_value());
