@@ -4,7 +4,7 @@ project(json-wrapper-lib LANGUAGES CXX VERSION 0.0.1)
 
 # options
 option(ENABLE_SIMD_JSON "add SIMD JSON wrapper" OFF)
-option(ENABLE_RAPID_JSON "add Rapid JSON wrapper" OFF)
+option(ENABLE_NLOH_JSON "add Nlohmann JSON wrapper" OFF)
 option(ENABLE_NAPI "add Node.js' NAPI wrapper" OFF)
 option(BUILD_READER "build the reader wrappers" ON)
 option(BUILD_WRITER "build the reader wrappers" OFF)
@@ -12,7 +12,7 @@ option(BUILD_TEST "build the tests" ON)
 
 # params
 set(EXT_LIB_SIMD_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where simd_json directory is")
-set(EXT_LIB_RAPID_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where rapidjson directory is")
+set(EXT_LIB_NLOH_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where nlohmann directory is")
 
 if (CMAKE_JS_VERSION)
   set(ENABLE_NAPI ON)
@@ -23,8 +23,8 @@ if ((NOT BUILD_READER) AND (NOT BUILD_WRITER))
   message(FATAL_ERROR "option BUILD_READER or BUILD_WRITER must be set")
 endif()
 
-if ((NOT ENABLE_SIMD_JSON) AND (NOT ENABLE_RAPID_JSON) AND (NOT ENABLE_NAPI))
-  message(FATAL_ERROR "option ENABLE_SIMD_JSON, ENABLE_RAPID_JSON, or ENABLE_NAPI must be set")
+if ((NOT ENABLE_SIMD_JSON) AND (NOT ENABLE_NLOH_JSON) AND (NOT ENABLE_NAPI))
+  message(FATAL_ERROR "option ENABLE_SIMD_JSON, ENABLE_NLOH_JSON, or ENABLE_NAPI must be set")
 endif()
 
 if (ENABLE_SIMD_JSON AND (NOT BUILD_READER))
@@ -32,9 +32,7 @@ if (ENABLE_SIMD_JSON AND (NOT BUILD_READER))
 endif()
 
 if (BUILD_READER)
-  if (ENABLE_RAPID_JSON)
-    message(FATAL_ERROR "option ENABLE_RAPID_JSON not supported yet")
-  endif()
+  #
 endif()
 
 if (BUILD_WRITER)
@@ -125,21 +123,22 @@ if (BUILD_READER)
     set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
   endif()
 
-  if (ENABLE_RAPID_JSON)
-    set(RAPID_JSON_DIR "${EXT_LIB_RAPID_JSON_PATH}/rapidjson")
-    if (NOT EXISTS ${RAPID_JSON_DIR})
-      message(FATAL_ERROR "cannot find \"rapidjson\" directory in ${EXT_LIB_RAPID_JSON_PATH}")
+  if (ENABLE_NLOH_JSON)
+    set(NLOH_JSON_DIR "${EXT_LIB_NLOH_JSON_PATH}/nlohmann")
+    if (NOT EXISTS ${NLOH_JSON_DIR})
+      message(FATAL_ERROR "cannot find \"nlohmann\" directory in ${EXT_LIB_NLOH_JSON_PATH}")
     endif()
 
-    file(GLOB_RECURSE RAPIDJSONEXT "${RAPID_JSON_DIR}/*.h")
-    list(LENGTH RAPIDJSONEXT RAPIDJSONEXT_LEN)
-    if (RAPIDJSONEXT_LEN EQUAL 0)
-      message(FATAL_ERROR "cannot find rapidjson header files")
+    file(GLOB_RECURSE NLOHJSONEXT "${NLOH_JSON_DIR}/*.hpp")
+    list(LENGTH NLOHJSONEXT NLOHJSONEXT_LEN)
+    if (NLOHJSONEXT_LEN EQUAL 0)
+      message(FATAL_ERROR "cannot find nlohmann header files")
     endif()
 
-    add_definitions(-DUSE_IN_RAPID)
-    include_directories("${EXT_LIB_RAPID_JSON_PATH}")
-    # TODO: source files
+    add_definitions(-DUSE_IN_NLOH)
+    include_directories("${EXT_LIB_NLOH_JSON_PATH}")
+    file(GLOB NLOHJSONSRC "src/nlohmann/*.cpp" "src/nlohmann/*.hpp")
+    set(CPPSRC ${CPPSRC} ${NLOHJSONSRC} ${NLOHJSONEXT})
   endif()
 
   if (ENABLE_NAPI)
