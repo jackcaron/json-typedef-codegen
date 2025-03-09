@@ -2,7 +2,7 @@
 
 #include "generated/root_empty.hpp"
 #include "generated/root_string.hpp"
-#include "simd_reader.hpp"
+#include "simd.hpp"
 
 #include <array>
 #include <gtest/gtest.h>

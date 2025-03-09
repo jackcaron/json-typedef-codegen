@@ -3,7 +3,7 @@
 #include "generated/basic_disc.hpp"
 #include "generated/basic_enum.hpp"
 #include "generated/basic_struct.hpp"
-#include "simd_reader.hpp"
+#include "simd.hpp"
 
 #include <array>
 #include <gtest/gtest.h>

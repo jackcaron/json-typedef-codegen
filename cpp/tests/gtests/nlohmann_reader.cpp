@@ -1,6 +1,6 @@
-#ifdef USE_IN_NLOH
+#include "nlohmann.hpp"
 
-#include "nlohmann_reader.hpp"
+#ifdef USE_IN_NLOH
 
 #include <gtest/gtest.h>
 

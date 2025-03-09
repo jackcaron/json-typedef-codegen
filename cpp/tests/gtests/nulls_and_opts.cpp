@@ -3,7 +3,7 @@
 #include "generated/nullable_enum.hpp"
 #include "generated/nullable_struct.hpp"
 #include "generated/optional_props.hpp"
-#include "simd_reader.hpp"
+#include "simd.hpp"
 
 #include <array>
 #include <gtest/gtest.h>

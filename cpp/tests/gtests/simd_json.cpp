@@ -1,6 +1,6 @@
 #ifdef USE_SIMD
 
-#include "simd_reader.hpp"
+#include "simd.hpp"
 
 #include <array>
 #include <gtest/gtest.h>

@@ -137,13 +137,13 @@ if (BUILD_READER)
 
     add_definitions(-DUSE_IN_NLOH)
     include_directories("${EXT_LIB_NLOH_JSON_PATH}")
-    file(GLOB NLOHJSONSRC "src/nlohmann/*.cpp" "src/nlohmann/*.hpp")
+    file(GLOB NLOHJSONSRC "src/nlohmann_reader/*.cpp" "src/nlohmann_reader/*.hpp")
     set(CPPSRC ${CPPSRC} ${NLOHJSONSRC} ${NLOHJSONEXT})
   endif()
 
   if (ENABLE_NAPI)
     add_definitions(-DUSE_IN_NAPI)
-    file(GLOB_RECURSE NAPISRC "src/napi/*.cpp" "src/napi/*.hpp")
+    file(GLOB_RECURSE NAPISRC "src/napi_reader/*.cpp" "src/napi_reader/*.hpp")
     set(CPPSRC ${CPPSRC} ${NAPISRC})
   endif()
 
