@@ -136,9 +136,9 @@ JsonValue SimdValue::create(const simdjson::ondemand::value val) {
 }
 
 // -------------------------------------------
-UnexpJsonError makeJsonError(const simdjson::error_code err_type) {
-  return makeJsonError(map_err_type(err_type),
-                       std::string(simdjson::error_message(err_type)));
+UnexpJsonError make_json_error(const simdjson::error_code err_type) {
+  return make_json_error(map_err_type(err_type),
+                         std::string(simdjson::error_message(err_type)));
 }
 
 // -------------------------------------------
@@ -152,7 +152,7 @@ namespace JsonTypedefCodeGen::Reader {
     if (const auto err_code = root.error(); err_code == simdjson::SUCCESS) {
       return SimdValue::create(root.value_unsafe());
     } else {
-      return ::makeJsonError(err_code);
+      return ::make_json_error(err_code);
     }
   }
 

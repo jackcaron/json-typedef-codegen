@@ -7,7 +7,7 @@
     $MANDATORY$
 
     template<typename JValue>
-    static ExpType<Struct> convert(const JValue& value) {
+    static ExpType<Struct> deserialize(const JValue& value) {
       $VISITED$
       Struct result;
 
@@ -15,11 +15,11 @@
         value,
         [&](const auto key, const auto &val) {
           return flatten_expected(
-            getValueIndex(key, entries, st_name)
+            get_value_index(key, entries, st_name)
             .transform([&](const int idx) -> ExpType<void> {
               if (visited[idx]) {
                 const auto err = std::format("Duplicated key {}", key);
-                return makeJsonError(JsonErrorTypes::Invalid, err);
+                return make_json_error(JsonErrorTypes::Invalid, err);
               }
               visited[idx] = true;
 

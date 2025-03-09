@@ -12,7 +12,7 @@ ExpType<JsonValue> SimdArrayIterator::get() const {
       return SimdValue::create(val.value_unsafe());
     }
   }
-  return makeJsonError(err_type);
+  return make_json_error(err_type);
 }
 
 void SimdArrayIterator::next() {

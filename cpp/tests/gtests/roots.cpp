@@ -24,7 +24,7 @@ namespace {
 
     return flatten_expected(Reader::simdjson_root_value(doc.get_value())
                                 .transform([](const Reader::JsonValue& val) {
-                                  return test::fromJsonRootEmpty(val);
+                                  return test::deserialize_RootEmpty(val);
                                 }));
   }
 
@@ -43,10 +43,10 @@ namespace {
           for (auto item : arr) {
             return item;
           }
-          return makeJsonError(JsonErrorTypes::Invalid);
+          return make_json_error(JsonErrorTypes::Invalid);
         }));
 
-    return flatten_expected(exp_str.transform(test::fromJsonRootString));
+    return flatten_expected(exp_str.transform(test::deserialize_RootString));
   }
 
 } // namespace

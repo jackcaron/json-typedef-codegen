@@ -61,7 +61,7 @@ pub fn create_switch_clauses(fields: &Vec<Field>, offset: usize) -> String {
         .map(|(i, f)| {
             format!(
                 r#"
-      case {}: return convert_and_set(result.{}, val);"#,
+      case {}: return deserialize_and_set(result.{}, val);"#,
                 i + offset,
                 f.name
             )
@@ -70,7 +70,7 @@ pub fn create_switch_clauses(fields: &Vec<Field>, offset: usize) -> String {
 }
 
 pub fn deserialize_name(name: &str) -> String {
-    format!("fromJson{}", name)
+    format!("deserialize_{}", name)
 }
 
 pub fn function_name(name: &str, full_ns: bool) -> String {
@@ -94,7 +94,7 @@ pub fn get_complete_definition(name: &str) -> String {
     format!(
         r#"
 {} {{
-  return FromJson<{}>::convert(value);
+  return FromJson<{}>::deserialize(value);
 }}
 "#,
         function_name(name, false),

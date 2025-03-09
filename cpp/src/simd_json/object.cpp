@@ -14,7 +14,7 @@ ExpType<ObjectIteratorPair> SimdObjectIterator::get() const {
                                 SimdValue::create(field.value())};
     }
   }
-  return makeJsonError(err_type);
+  return make_json_error(err_type);
 }
 
 void SimdObjectIterator::next() {

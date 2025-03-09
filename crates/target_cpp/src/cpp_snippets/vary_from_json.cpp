@@ -6,7 +6,7 @@
     $ENTRIES$
     $MANDATORY$
 
-    static ExpType<Vary> convert(const Data::JsonObject& value) {
+    static ExpType<Vary> deserialize(const Data::JsonObject& value) {
       $VISITED$
       Vary result;
 
@@ -14,11 +14,11 @@
         value,
         [&](const std::string_view key, const auto val) {
           return flatten_expected(
-            getValueIndex(key, entries, vary_name)
+            get_value_index(key, entries, vary_name)
             .transform([&](int idx) -> ExpType<void> {
                 if (visited[idx]) {
                   const auto err = std::format("Duplicated key {}", key);
-                  return makeJsonError(JsonErrorTypes::Invalid, err);
+                  return make_json_error(JsonErrorTypes::Invalid, err);
                 }
                 visited[idx] = true;
 

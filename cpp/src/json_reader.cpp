@@ -58,7 +58,7 @@ namespace JsonTypedefCodeGen::Reader {
         return val->read_u64().transform(conv);
       case NumberType::NaN:
       default:
-        return makeJsonError(JsonErrorTypes::WrongType);
+        return make_json_error(JsonErrorTypes::WrongType);
       }
     }
 
@@ -104,7 +104,7 @@ namespace JsonTypedefCodeGen::Reader {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
-    return makeJsonError(JsonErrorTypes::Invalid, "end iterator"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "end iterator"sv);
   }
 
   DLL_PUBLIC JsonArrayIterator& JsonArrayIterator::operator++() {
@@ -128,7 +128,7 @@ namespace JsonTypedefCodeGen::Reader {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
-    return makeJsonError(JsonErrorTypes::Invalid, "end iterator"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "end iterator"sv);
   }
 
   DLL_PUBLIC JsonObjectIterator& JsonObjectIterator::operator++() {
@@ -188,7 +188,7 @@ namespace JsonTypedefCodeGen::Reader {
         const auto [it, ok] = result.insert({key, tmp.value()});
         if (!ok) {
           const auto err = format("Duplicated key {}", key);
-          return makeJsonError(JsonErrorTypes::String, err);
+          return make_json_error(JsonErrorTypes::String, err);
         }
       } else {
         return std::unexpected(item.error());
@@ -199,7 +199,8 @@ namespace JsonTypedefCodeGen::Reader {
 
   // ------------------------------------------
   static UnexpJsonError noPimpl() {
-    return makeJsonError(JsonErrorTypes::Invalid, "invalid/empty JsonValue"sv);
+    return make_json_error(JsonErrorTypes::Invalid,
+                           "invalid/empty JsonValue"sv);
   }
 
   JsonValue::JsonValue(Spec::ValuePtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
@@ -270,7 +271,7 @@ namespace JsonTypedefCodeGen::Reader {
     default:
       break;
     }
-    return makeJsonError(JsonErrorTypes::Invalid);
+    return make_json_error(JsonErrorTypes::Invalid);
   }
 
   DLL_PUBLIC ExpType<void> json_array_for_each(const JsonArray& array,

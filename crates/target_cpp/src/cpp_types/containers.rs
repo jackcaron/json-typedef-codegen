@@ -32,7 +32,7 @@ impl CppDict {
             r#"
 template<> struct FromJson<{}> {{
   static ExpType<{}> convert(const Reader::JsonValue &value) {{
-    return makeJsonError(JsonErrorTypes::Unknown, "not ready yet"sv); // probably just reading the keys, ignore the data
+    return make_json_error(JsonErrorTypes::Unknown, "not ready yet"sv); // probably just reading the keys, ignore the data
   }}
 }};
 "#,
@@ -61,7 +61,7 @@ impl CppNullable {
         let full_name = self.get_full_name(cpp_state);
         format!(
             r#"
-JsonTypedefCodeGen::ExpType<{}> fromJsonNullable{}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
+JsonTypedefCodeGen::ExpType<{}> deserialize_Nullable{}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
             full_name, full_name
         )
     }
@@ -70,8 +70,8 @@ JsonTypedefCodeGen::ExpType<{}> fromJsonNullable{}(const JsonTypedefCodeGen::Rea
         let full_name = self.get_full_name(cpp_state);
         format!(
             r#"
-ExpType<{}> fromJsonNullable{}(const Reader::JsonValue& value) {{
-  return FromJson<{}>::convert(value);
+ExpType<{}> deserialize_Nullable{}(const Reader::JsonValue& value) {{
+  return FromJson<{}>::deserialize(value);
 }}
 "#,
             full_name, full_name, full_name

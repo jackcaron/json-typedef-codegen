@@ -88,7 +88,7 @@ ExpType<bool> NapiValue::read_bool() const {
   if (m_value.IsBoolean()) {
     return m_value.ToBoolean();
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not a boolean"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not a boolean"sv);
 }
 
 ExpType<double> NapiValue::read_double() const {
@@ -98,7 +98,7 @@ ExpType<double> NapiValue::read_double() const {
   } else if (m_value.IsNumber()) {
     return m_value.ToNumber().DoubleValue();
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not a number"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not a number"sv);
 }
 
 ExpType<uint64_t> NapiValue::read_u64() const {
@@ -108,7 +108,7 @@ ExpType<uint64_t> NapiValue::read_u64() const {
   } else if (m_value.IsNumber()) {
     return m_value.ToNumber().Uint32Value();
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not a number"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not a number"sv);
 }
 
 ExpType<int64_t> NapiValue::read_i64() const {
@@ -118,28 +118,29 @@ ExpType<int64_t> NapiValue::read_i64() const {
   } else if (m_value.IsNumber()) {
     return m_value.ToNumber().Int64Value();
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not a number"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not a number"sv);
 }
 
 ExpType<std::string> NapiValue::read_str() const {
   if (m_value.IsString() || m_value.IsSymbol()) {
     return m_value.ToString();
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not a string"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not a string"sv);
 }
 
 ExpType<JsonArray> NapiValue::read_array() const {
   if (m_value.IsArray()) {
     return NapiArray::create(m_value.As<Napi::Array>());
   }
-  return makeJsonError(JsonErrorTypes::WrongType, "not an array"sv);
+  return make_json_error(JsonErrorTypes::WrongType, "not an array"sv);
 }
 
 ExpType<JsonObject> NapiValue::read_object() const {
   if (!m_value.IsObject()) {
-    return makeJsonError(JsonErrorTypes::WrongType, "not an object"sv);
+    return make_json_error(JsonErrorTypes::WrongType, "not an object"sv);
   } else if (m_value.IsArray()) {
-    return makeJsonError(JsonErrorTypes::WrongType, "the object is an array"sv);
+    return make_json_error(JsonErrorTypes::WrongType,
+                           "the object is an array"sv);
   } else {
     return NapiObject::create(m_value.As<Napi::Object>());
   }
@@ -179,8 +180,8 @@ JsonValue NapiValue::create(const Napi::Value val) {
 }
 
 // -------------------------------------------
-UnexpJsonError makeJsonError(const napi_status err_type) {
-  return makeJsonError(map_err_type(err_type));
+UnexpJsonError make_json_error(const napi_status err_type) {
+  return make_json_error(map_err_type(err_type));
 }
 
 // -------------------------------------------
@@ -191,7 +192,7 @@ namespace JsonTypedefCodeGen::Reader {
     if (root.IsArray() || root.IsObject()) {
       return NapiValue::create(root);
     }
-    return makeJsonError(
+    return make_json_error(
         JsonErrorTypes::Invalid,
         "Expect root Napi::Value to be an object or an array"sv);
   }

@@ -261,8 +261,8 @@ namespace JsonTypedefCodeGen::Data {
     if (auto opt_arr = value.read_array(); opt_arr.has_value()) {
       return json_array_for_each(*opt_arr, cb);
     }
-    return makeJsonError(JsonErrorTypes::Invalid,
-                         std::string_view("expected an array"));
+    return make_json_error(JsonErrorTypes::Invalid,
+                           std::string_view("expected an array"));
   }
 
   DLL_PUBLIC ExpType<void> json_object_for_each(const JsonObject& object,
@@ -280,8 +280,8 @@ namespace JsonTypedefCodeGen::Data {
     if (auto opt_obj = value.read_object(); opt_obj.has_value()) {
       return json_object_for_each(*opt_obj, cb);
     }
-    return makeJsonError(JsonErrorTypes::Invalid,
-                         std::string_view("expected an object"));
+    return make_json_error(JsonErrorTypes::Invalid,
+                           std::string_view("expected an object"));
   }
 
 } // namespace JsonTypedefCodeGen::Data

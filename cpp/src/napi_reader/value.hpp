@@ -35,4 +35,4 @@ public:
 // -------------------------------------------
 
 // -------------------------------------------
-UnexpJsonError makeJsonError(const napi_status err_type);
+UnexpJsonError make_json_error(const napi_status err_type);

@@ -13,22 +13,22 @@
   template<typename Type>
   struct FromJson<JsonMap<Type>> {
     template <typename JValue>
-    static ExpType<JsonMap<Type>> convert(const JValue& value) {
+    static ExpType<JsonMap<Type>> deserialize(const JValue& value) {
       JsonMap<Type> result;
       auto feach =
         json_object_for_each(value, [&](const auto key, const auto &val) -> ExpType<void> {
-          if (auto exp_res = FromJson<Type>::convert(val); exp_res.has_value()) {
+          if (auto exp_res = FromJson<Type>::deserialize(val); exp_res.has_value()) {
             auto [_iter, ok] = result.insert({ std::string(key), exp_res.value() });
             if (ok) {
               return ExpType<void>();
             }
             else {
               const auto err = std::format("Duplicated key \"{}\"", key);
-              return makeJsonError(JsonErrorTypes::String, err);
+              return make_json_error(JsonErrorTypes::String, err);
             }
           }
           else {
-            return makeJsonError(exp_res.error());
+            return make_json_error(exp_res.error());
           }
         });
       return feach.transform([res = std::move(result)]() { return res; });
@@ -44,7 +44,7 @@
     for (const auto midx : mandatory_indices) {
       if (!visited[midx]) {
         const auto err = std::format("Missing key \"{}\" for {}", entries[midx], name);
-        return makeJsonError(JsonErrorTypes::String, err);
+        return make_json_error(JsonErrorTypes::String, err);
       }
     }
     return ExpType<void>();

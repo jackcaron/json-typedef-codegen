@@ -40,10 +40,10 @@ namespace {
           for (auto item : arr) {
             return item;
           }
-          return makeJsonError(JsonErrorTypes::Invalid);
+          return make_json_error(JsonErrorTypes::Invalid);
         }));
 
-    return flatten_expected(exp_enum.transform(test::fromJsonBasicEnum));
+    return flatten_expected(exp_enum.transform(test::deserialize_BasicEnum));
   }
 
   ExpBasicStruct get_exp_basic_struct(const padded_str& json_str) {
@@ -52,7 +52,7 @@ namespace {
 
     return flatten_expected(Reader::simdjson_root_value(doc.get_value())
                                 .transform([](const auto& val) {
-                                  return test::fromJsonBasicStruct(val);
+                                  return test::deserialize_BasicStruct(val);
                                 }));
   }
 
@@ -62,7 +62,7 @@ namespace {
 
     return flatten_expected(Reader::simdjson_root_value(doc.get_value())
                                 .transform([](const auto& val) {
-                                  return test::fromJsonBasicDisc(val);
+                                  return test::deserialize_BasicDisc(val);
                                 }));
   }
 

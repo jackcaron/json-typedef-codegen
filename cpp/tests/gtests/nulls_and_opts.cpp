@@ -35,11 +35,11 @@ namespace {
           for (auto item : arr) {
             return item;
           }
-          return makeJsonError(JsonErrorTypes::Invalid);
+          return make_json_error(JsonErrorTypes::Invalid);
         }));
 
     return flatten_expected(
-        exp_enum.transform(test::fromJsonNullableNullableEnum));
+        exp_enum.transform(test::deserialize_NullableNullableEnum));
   }
 
   ExpNullableStruct get_exp_null_struct(const padded_str& json_str) {
@@ -57,11 +57,11 @@ namespace {
           for (auto item : arr) {
             return item;
           }
-          return makeJsonError(JsonErrorTypes::Invalid);
+          return make_json_error(JsonErrorTypes::Invalid);
         }));
 
     return flatten_expected(
-        exp_struct.transform(test::fromJsonNullableNullableStruct));
+        exp_struct.transform(test::deserialize_NullableNullableStruct));
   }
 
   ExpOptProps get_exp_opt_props(const padded_str& json_str) {
@@ -70,7 +70,7 @@ namespace {
 
     return flatten_expected(Reader::simdjson_root_value(doc.get_value())
                                 .transform([](const auto& val) {
-                                  return test::fromJsonOptionalProps(val);
+                                  return test::deserialize_OptionalProps(val);
                                 }));
   }
 

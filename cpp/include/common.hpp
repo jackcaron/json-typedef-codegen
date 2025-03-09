@@ -60,15 +60,15 @@ namespace JsonTypedefCodeGen {
   template <typename Type> using ExpType = std::expected<Type, JsonError>;
   using UnexpJsonError = std::unexpected<JsonError>;
 
-  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type) {
+  constexpr UnexpJsonError make_json_error(const JsonErrorTypes type) {
     return UnexpJsonError(std::in_place_t{}, type);
   }
-  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type,
-                                         const std::string_view message) {
+  constexpr UnexpJsonError make_json_error(const JsonErrorTypes type,
+                                           const std::string_view message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
-  constexpr UnexpJsonError makeJsonError(const JsonErrorTypes type,
-                                         const std::string& message) {
+  constexpr UnexpJsonError make_json_error(const JsonErrorTypes type,
+                                           const std::string& message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
 

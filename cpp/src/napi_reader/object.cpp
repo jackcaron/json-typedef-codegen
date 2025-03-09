@@ -13,20 +13,20 @@ NapiObjectIterator::NapiObjectIterator(Napi::Object object) : m_object(object) {
 
 ExpType<ObjectIteratorPair> NapiObjectIterator::get() const {
   if (m_keys.IsEmpty()) {
-    return makeJsonError(JsonErrorTypes::Invalid, "Object with no keys"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "Object with no keys"sv);
   }
 
   const auto key = m_keys.Get(m_index);
   if (key.IsEmpty()) {
-    return makeJsonError(JsonErrorTypes::Invalid, "Empty key"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "Empty key"sv);
   } else if (!key.IsString() && !key.IsSymbol()) {
-    return makeJsonError(JsonErrorTypes::WrongType,
-                         "Object's key is not a string"sv);
+    return make_json_error(JsonErrorTypes::WrongType,
+                           "Object's key is not a string"sv);
   }
 
   const auto val = m_object.Get(key);
   if (val.IsEmpty()) {
-    return makeJsonError(JsonErrorTypes::Invalid, "Empty value"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "Empty value"sv);
   }
   return ObjectIteratorPair(key.ToString(), NapiValue::create(val));
 }

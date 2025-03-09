@@ -33,7 +33,7 @@ public:
 };
 
 // -------------------------------------------
-UnexpJsonError makeJsonError(const simdjson::error_code err_type);
+UnexpJsonError make_json_error(const simdjson::error_code err_type);
 
 template <typename Type>
 ExpType<Type> map_simd_data(simdjson::simdjson_result<Type> data) {
@@ -41,5 +41,5 @@ ExpType<Type> map_simd_data(simdjson::simdjson_result<Type> data) {
   [[likely]] if (err_type == simdjson::SUCCESS) {
     return ExpType<Type>(data.value());
   }
-  return makeJsonError(err_type);
+  return make_json_error(err_type);
 }

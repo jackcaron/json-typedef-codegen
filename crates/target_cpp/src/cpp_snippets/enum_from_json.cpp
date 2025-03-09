@@ -5,8 +5,8 @@
     $ENTRIES$
 
     template<typename JValue>
-    static ExpType<Enum> convert(const JValue &value) {
-      return getEnumIndex(value, entries, "$ENUM_NAME$"sv)
+    static ExpType<Enum> deserialize(const JValue &value) {
+      return get_enum_index(value, entries, "$ENUM_NAME$"sv)
         .transform([](auto idx) {
           switch(idx) {
             default:
