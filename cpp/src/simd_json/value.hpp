@@ -13,7 +13,7 @@ private:
 
 public:
   SimdValue() = delete;
-  SimdValue(simdjson::ondemand::value val) : m_value(val) {}
+  SimdValue(const simdjson::ondemand::value val) : m_value(val) {}
   ~SimdValue() {}
 
   virtual JsonTypes get_type() const override;
@@ -29,7 +29,7 @@ public:
 
   virtual NumberType get_number_type() const override;
 
-  static JsonValue create(simdjson::ondemand::value val);
+  static JsonValue create(const simdjson::ondemand::value val);
 };
 
 // -------------------------------------------

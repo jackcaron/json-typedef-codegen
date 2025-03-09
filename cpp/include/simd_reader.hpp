@@ -8,7 +8,7 @@
 namespace JsonTypedefCodeGen::Reader {
 
   ExpType<JsonValue> simdjson_root_value(
-      simdjson::simdjson_result<simdjson::ondemand::value> root);
+      const simdjson::simdjson_result<simdjson::ondemand::value> root);
 
 } // namespace JsonTypedefCodeGen::Reader
 

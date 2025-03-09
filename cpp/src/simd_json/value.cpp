@@ -131,7 +131,7 @@ NumberType SimdValue::get_number_type() const {
   return NumberType::NaN;
 }
 
-JsonValue SimdValue::create(simdjson::ondemand::value val) {
+JsonValue SimdValue::create(const simdjson::ondemand::value val) {
   return create_json(std::move(std::make_unique<SimdValue>(val)));
 }
 
@@ -148,7 +148,7 @@ namespace JsonTypedefCodeGen::Reader {
   using namespace simdjson;
 
   DLL_PUBLIC ExpType<JsonValue>
-  simdjson_root_value(simdjson::simdjson_result<ondemand::value> root) {
+  simdjson_root_value(const simdjson::simdjson_result<ondemand::value> root) {
     if (const auto err_code = root.error(); err_code == simdjson::SUCCESS) {
       return SimdValue::create(root.value_unsafe());
     } else {
