@@ -23,8 +23,7 @@ namespace JsonTypedefCodeGen::Deserialize {
       return make_json_error(JsonErrorTypes::Invalid, err);
     }
 
-    DLL_PUBLIC UnexpJsonError invalid_value(const strview val,
-                                            const strview name) {
+    UnexpJsonError invalid_value(const strview val, const strview name) {
       const auto err = std::format("Invalid value \"{}\" for {}"sv, val, name);
       return make_json_error(JsonErrorTypes::Invalid, err);
     }
@@ -35,6 +34,19 @@ namespace JsonTypedefCodeGen::Deserialize {
     }
 
   } // namespace Errors
+
+  DLL_PUBLIC ExpType<int>
+  get_enum_index_impl(const strview value,
+                      const std::span<const strview> entries,
+                      const strview name) {
+    for (int index = 0; const auto entry : entries) {
+      if (value == entry) {
+        return index;
+      }
+      ++index;
+    }
+    return Errors::invalid_value(value, name);
+  }
 
   DLL_PUBLIC ExpType<void>
   visited_mandatory(const std::span<const int> mandatory_indices,
@@ -69,7 +81,7 @@ namespace JsonTypedefCodeGen::Deserialize {
 
   DLL_PUBLIC ExpType<int>
   get_value_index(const strview value, const std::span<const strview> entries,
-                  const strview structName) {
+                  const strview name) {
     for (int index = 0; const auto entry : entries) {
       if (value == entry) {
         return index;
@@ -77,8 +89,7 @@ namespace JsonTypedefCodeGen::Deserialize {
       ++index;
     }
 
-    const auto err =
-        std::format("Invalid key \"{}\" in {}"sv, value, structName);
+    const auto err = std::format("Invalid key \"{}\" in {}"sv, value, name);
     return make_json_error(JsonErrorTypes::Invalid, err);
   }
 
