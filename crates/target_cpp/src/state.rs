@@ -56,7 +56,8 @@ impl CppState {
     }
 
     pub fn write_src_include_files(&self, cpp_props: &CppProps) -> String {
-        cpp_props.get_codegen_src_includes()
+        "#define IMPL_DESERIALIZE\n".to_string()
+            + &cpp_props.get_codegen_src_includes()
             + &(self
                 .src_include_files
                 .iter()

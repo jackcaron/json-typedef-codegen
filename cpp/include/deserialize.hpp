@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef IMPL_DESERIALIZE
+
 #include "json_data.hpp"
 #include "json_reader.hpp"
 
@@ -266,3 +268,5 @@ namespace JsonTypedefCodeGen::Deserialize {
   };
 
 } // namespace JsonTypedefCodeGen::Deserialize
+
+#endif

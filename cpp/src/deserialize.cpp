@@ -1,3 +1,6 @@
+#if defined(USE_SIMD) || defined(USE_IN_NAPI) || defined(USE_IN_NLOH)
+
+#define IMPL_DESERIALIZE
 #include "deserialize.hpp"
 #include "internal.hpp"
 
@@ -240,3 +243,5 @@ namespace JsonTypedefCodeGen::Deserialize {
   }
 
 } // namespace JsonTypedefCodeGen::Deserialize
+
+#endif
