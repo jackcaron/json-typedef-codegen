@@ -114,7 +114,7 @@ impl CppDiscriminator {
             .map(|(i, v)| {
                 format!(
                     r#"
-        case {}: return FromJson<{}>::deserialize(object).transform(cast);"#,
+        case {}: return JsonTypedefCodeGen::Deserialize::Json<{}>::deserialize(object).transform(cast);"#,
                     i,
                     cpp_props.get_namespaced_name(&v.type_name)
                 )

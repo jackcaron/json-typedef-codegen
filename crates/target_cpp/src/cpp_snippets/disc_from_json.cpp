@@ -1,6 +1,6 @@
 
   template<>
-  struct FromJson<$FULL_NAME$> {
+  struct Json<$FULL_NAME$> {
     using Disc = $FULL_NAME$;
     static constexpr std::string_view discName = "$DISC_NAME$"sv;
     $ENTRIES$
@@ -36,7 +36,7 @@
 
     static ExpType<Disc> deserialize(const Reader::JsonValue &value) {
       return flatten_expected(value.clone().transform([](Data::JsonValue val) {
-        return FromJson<Disc>::deserialize(val);
+        return Json<Disc>::deserialize(val);
       }));
     }
   };

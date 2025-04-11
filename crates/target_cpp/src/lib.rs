@@ -64,7 +64,7 @@ impl Target {
         write_codegen_version(out)?;
 
         writeln!(out, "#include \"{}\"\n", self.get_header_filename())?;
-        writeln!(out, "{}", state.write_src_include_files())?;
+        writeln!(out, "{}", state.write_src_include_files(&self.props))?;
         writeln!(out, "{}", state.write_internal_code(&self.props))?;
         write!(out, "{}", self.props.open_namespace())?;
 

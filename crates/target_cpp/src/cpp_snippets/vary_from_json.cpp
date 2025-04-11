@@ -1,6 +1,6 @@
 
   template<>
-  struct FromJson<$FULL_NAME$> {
+  struct Json<$FULL_NAME$> {
     using Vary = $FULL_NAME$;
     static constexpr std::string_view vary_name = "$VARY_NAME$"sv;
     $ENTRIES$
@@ -17,8 +17,7 @@
             get_value_index(key, entries, vary_name)
             .transform([&](int idx) -> ExpType<void> {
                 if (visited[idx]) {
-                  const auto err = std::format("Duplicated key {}", key);
-                  return make_json_error(JsonErrorTypes::Invalid, err);
+                  return Errors::duplicated_key(key);
                 }
                 visited[idx] = true;
 

@@ -156,6 +156,10 @@ impl CppProps {
             + &self.include_reader.get_header_file("json_reader.hpp")
     }
 
+    pub fn get_codegen_src_includes(&self) -> String {
+        self.include_data.get_header_file("deserialize.hpp")
+    }
+
     pub fn from_file(filename: Option<&str>) -> anyhow::Result<CppProps> {
         match filename {
             Some(fname) => {

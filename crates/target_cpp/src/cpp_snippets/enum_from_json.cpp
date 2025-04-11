@@ -1,6 +1,6 @@
 
   template<>
-  struct FromJson<$FULL_NAME$> {
+  struct Json<$FULL_NAME$> {
     using Enum = $FULL_NAME$;
     $ENTRIES$
 

@@ -77,7 +77,6 @@ impl CppTypes {
 
     pub fn get_internal_code(&self, _cpp_state: &CppState, cpp_props: &CppProps) -> Option<String> {
         match self {
-            CppTypes::Primitive(p) => Some(p.get_internal_function()),
             CppTypes::Enum(_enum) => Some(_enum.get_internal_code(cpp_props)),
             CppTypes::Struct(_struct) => Some(_struct.get_internal_code(cpp_props)),
             CppTypes::Discriminator(disc) => Some(disc.get_internal_code(cpp_props)),

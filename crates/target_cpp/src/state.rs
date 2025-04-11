@@ -55,17 +55,19 @@ impl CppState {
                 .collect::<String>())
     }
 
-    pub fn write_src_include_files(&self) -> String {
-        self.src_include_files
-            .iter()
-            .filter_map(|h| {
-                if self.include_files.contains(h) {
-                    None
-                } else {
-                    Some(format!("#include {}\n", h))
-                }
-            })
-            .collect::<String>()
+    pub fn write_src_include_files(&self, cpp_props: &CppProps) -> String {
+        cpp_props.get_codegen_src_includes()
+            + &(self
+                .src_include_files
+                .iter()
+                .filter_map(|h| {
+                    if self.include_files.contains(h) {
+                        None
+                    } else {
+                        Some(format!("#include {}\n", h))
+                    }
+                })
+                .collect::<String>())
     }
 
     pub fn write_internal_code(&self, cpp_props: &CppProps) -> String {
@@ -75,41 +77,9 @@ impl CppState {
             .filter_map(|t| t.get_internal_code(&self, cpp_props))
             .collect::<String>();
 
-        if type_internal_code.is_empty()
-            && !self.require_get_enum_index_code
-            && !self.require_set_internal_code
-            && !self.require_array_internal_code
-            && !self.require_map_internal_code
-            && !self.require_get_value_index_code
-            && !self.require_json_raw_data_internal_code
-            && !self.require_unique_ptr_internal_code
-        {
-            return String::new();
-        }
-
-        let mut intern_code = INTERNAL_CODE_HEADER.to_string();
-        if self.require_array_internal_code {
-            intern_code = intern_code + &(INTERNAL_CODE_ARRAY.to_string());
-        }
-        if self.require_map_internal_code {
-            intern_code = intern_code + &get_from_json_dictionary_converter(cpp_props);
-        }
-        if self.require_get_enum_index_code {
-            intern_code = intern_code + CppEnum::get_enum_index_code();
-        }
-        if self.require_get_value_index_code {
-            intern_code = intern_code + &(INTERNAL_CODE_VALUE_INDEX.to_string());
-        }
-        if self.require_set_internal_code {
-            intern_code = intern_code + &CppDict::get_set_internal_function(cpp_props);
-        }
-        if self.require_unique_ptr_internal_code {
-            intern_code = intern_code + &INTERNAL_CODE_UPTR.to_string();
-        }
-        if self.require_json_raw_data_internal_code {
-            intern_code = intern_code + &INTERNAL_CODE_RAW_JSON_DATA.to_string();
-        }
-        intern_code + &type_internal_code + "\n} // namespace\n"
+        INTERNAL_CODE_HEADER.to_string()
+            + &type_internal_code
+            + "\n} // namespace JsonTypedefCodeGen::Deserialize\n"
     }
 
     pub fn write_forward_declarations(&self) -> String {

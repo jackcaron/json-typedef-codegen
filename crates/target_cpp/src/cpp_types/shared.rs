@@ -61,7 +61,7 @@ pub fn create_switch_clauses(fields: &Vec<Field>, offset: usize) -> String {
         .map(|(i, f)| {
             format!(
                 r#"
-      case {}: return deserialize_and_set(result.{}, val);"#,
+                  case {}: return deserialize_and_set(result.{}, val);"#,
                 i + offset,
                 f.name
             )
@@ -94,7 +94,7 @@ pub fn get_complete_definition(name: &str) -> String {
     format!(
         r#"
 {} {{
-  return FromJson<{}>::deserialize(value);
+  return JsonTypedefCodeGen::Deserialize::Json<{}>::deserialize(value);
 }}
 "#,
         function_name(name, false),

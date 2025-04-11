@@ -1,6 +1,6 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::{ENUM_DECL, INTERNAL_CODE_ENUM_INDEX};
+use crate::cpp_snippets::ENUM_DECL;
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -21,10 +21,6 @@ impl CppEnum {
 
     pub fn get_prefix() -> &'static str {
         "enum class"
-    }
-
-    pub fn get_enum_index_code() -> &'static str {
-        INTERNAL_CODE_ENUM_INDEX
     }
 
     pub fn declare(&self) -> String {
