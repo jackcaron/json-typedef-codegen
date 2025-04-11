@@ -162,7 +162,7 @@ TEST(BASIC, struct_err) {
 
     EXPECT_FALSE(exp_bs.has_value());
     exp_error(exp_bs.error(),
-              JsonError(JsonErrorTypes::Invalid, "Duplicated key bar"sv));
+              JsonError(JsonErrorTypes::String, "Duplicated key \"bar\""sv));
   }
   // invalid value
   {

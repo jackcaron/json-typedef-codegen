@@ -3,7 +3,6 @@
 #include "json_data.hpp"
 #include "json_reader.hpp"
 
-#include <format>
 #include <memory>
 #include <span>
 
@@ -13,6 +12,17 @@ namespace JsonTypedefCodeGen::Deserialize {
 
   namespace JDt = JsonTypedefCodeGen::Data;
   namespace JRd = JsonTypedefCodeGen::Reader;
+  using strview = std::string_view;
+
+  namespace Errors {
+
+    UnexpJsonError duplicated_key(const strview key);
+
+    UnexpJsonError not_string(const strview name);
+
+    UnexpJsonError invalid_value(const strview val, const strview name);
+
+  } // namespace Errors
 
   template <typename Type> struct Json;
 
@@ -35,7 +45,7 @@ namespace JsonTypedefCodeGen::Deserialize {
   template <typename Type>
   ExpType<Type> optional_to_exp_type(const std::optional<Type>& opt,
                                      const JsonErrorTypes errtype,
-                                     const std::string_view msg) {
+                                     const strview msg) {
     if (opt.has_value()) {
       return *opt;
     }
@@ -44,9 +54,8 @@ namespace JsonTypedefCodeGen::Deserialize {
 
   template <typename JValue>
   ExpType<int> get_enum_index(const JValue& value,
-                              const std::span<const std::string_view> entries,
-                              const std::string_view enumName) {
-    using namespace std::string_view_literals;
+                              const std::span<const strview> entries,
+                              const strview enumName) {
     if (const auto str = value.read_str(); str.has_value()) {
       const auto val = std::move(str.value());
       for (int index = 0; const auto entry : entries) {
@@ -55,15 +64,12 @@ namespace JsonTypedefCodeGen::Deserialize {
         }
         ++index;
       }
-      const auto err =
-          std::format("Invalid value \"{}\" for {}"sv, val, enumName);
-      return make_json_error(JsonErrorTypes::Invalid, err);
+      return Errors::invalid_value(val, enumName);
     } else {
       if constexpr (std::is_same_v<JValue, JDt::JsonValue>) {
-        const auto err = std::format("Not a string for {}"sv, enumName);
-        return make_json_error(JsonErrorTypes::Invalid, err);
+        return Errors::not_string(enumName);
       } else {
-        return std::unexpected(str.error());
+        return UnexpJsonError(std::move(str.error()));
       }
     }
   }
@@ -91,26 +97,26 @@ namespace JsonTypedefCodeGen::Deserialize {
   }
 
   //  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
-  ExpType<void>
-  visited_mandatory(const std::span<const int> mandatory_indices,
-                    const std::span<bool> visited,
-                    const std::span<const std::string_view> entries,
-                    const std::string_view name);
+  ExpType<void> visited_mandatory(const std::span<const int> mandatory_indices,
+                                  const std::span<bool> visited,
+                                  const std::span<const strview> entries,
+                                  const strview name);
 
   ExpType<std::string> get_disc_value(const JDt::JsonObject& object,
-                                      const std::string_view disc,
-                                      const std::string_view name);
+                                      const strview disc, const strview name);
 
-  ExpType<int> get_value_index(const std::string_view value,
-                               const std::span<const std::string_view> entries,
-                               const std::string_view structName);
+  ExpType<int> get_value_index(const strview value,
+                               const std::span<const strview> entries,
+                               const strview structName);
 
   //  -  -  -  -  -  -  -  -  -  -  -  -  -  -  -
 
   // more primitives
 
   template <> struct Json<bool> {
-    static ExpType<bool> deserialize(const JRd::JsonValue& value);
+    static inline ExpType<bool> deserialize(const JRd::JsonValue& value) {
+      return value.read_bool();
+    }
     static ExpType<bool> deserialize(const JDt::JsonValue& value);
   };
 
@@ -145,12 +151,16 @@ namespace JsonTypedefCodeGen::Deserialize {
   };
 
   template <> struct Json<int64_t> {
-    static ExpType<int64_t> deserialize(const JRd::JsonValue& value);
+    static inline ExpType<int64_t> deserialize(const JRd::JsonValue& value) {
+      return value.read_i64();
+    }
     static ExpType<int64_t> deserialize(const JDt::JsonValue& value);
   };
 
   template <> struct Json<uint64_t> {
-    static ExpType<uint64_t> deserialize(const JRd::JsonValue& value);
+    static inline ExpType<uint64_t> deserialize(const JRd::JsonValue& value) {
+      return value.read_u64();
+    }
     static ExpType<uint64_t> deserialize(const JDt::JsonValue& value);
   };
 
@@ -160,18 +170,29 @@ namespace JsonTypedefCodeGen::Deserialize {
   };
 
   template <> struct Json<double> {
-    static ExpType<double> deserialize(const JRd::JsonValue& value);
+    static inline ExpType<double> deserialize(const JRd::JsonValue& value) {
+      return value.read_double();
+    }
     static ExpType<double> deserialize(const JDt::JsonValue& value);
   };
 
   template <> struct Json<std::string> {
-    static ExpType<std::string> deserialize(const JRd::JsonValue& value);
+    static inline ExpType<std::string>
+    deserialize(const JRd::JsonValue& value) {
+      return value.read_str();
+    }
     static ExpType<std::string> deserialize(const JDt::JsonValue& value);
   };
 
   template <> struct Json<Data::JsonValue> {
-    static ExpType<Data::JsonValue> deserialize(const Reader::JsonValue& v);
-    static ExpType<Data::JsonValue> deserialize(const Data::JsonValue& v);
+    static inline ExpType<Data::JsonValue>
+    deserialize(const Reader::JsonValue& v) {
+      return v.clone();
+    }
+    static inline ExpType<Data::JsonValue>
+    deserialize(const Data::JsonValue& v) {
+      return v;
+    }
   };
 
   template <typename Type> struct Json<std::vector<Type>> {
@@ -185,7 +206,7 @@ namespace JsonTypedefCodeGen::Deserialize {
               result.emplace_back(std::move(exp_res.value()));
               return ExpType<void>();
             } else {
-              return UnexpJsonError(exp_res.error());
+              return UnexpJsonError(std::move(exp_res.error()));
             }
           });
       return feach.transform([res = std::move(result)]() {
@@ -213,9 +234,7 @@ namespace JsonTypedefCodeGen::Deserialize {
               if (result.insert({std::string(key), exp_res.value()}).second) {
                 return ExpType<void>();
               } else {
-                using namespace std::string_view_literals;
-                const auto err = std::format("Duplicated key \"{}\""sv, key);
-                return make_json_error(JsonErrorTypes::String, err);
+                return Errors::duplicated_key(key);
               }
             } else {
               return make_json_error(exp_res.error());
@@ -237,7 +256,7 @@ namespace JsonTypedefCodeGen::Deserialize {
           return ExpType<UniqueNull>(nullptr);
         }
       } else {
-        return std::unexpected(std::move(exp_null.error()));
+        return UnexpJsonError(std::move(exp_null.error()));
       }
 
       return Json<Nullable>::deserialize(value).transform([](auto&& val) {
