@@ -11,8 +11,11 @@ pub struct CppEnum {
 }
 
 impl CppEnum {
-    pub fn new(name: String, members: Vec<target::EnumMember>) -> CppEnum {
-        CppEnum { name, members }
+    pub fn new(name: &str, members: Vec<target::EnumMember>) -> CppEnum {
+        CppEnum {
+            name: name.to_string(),
+            members,
+        }
     }
 
     pub fn get_name<'a>(&'a self) -> &'a str {

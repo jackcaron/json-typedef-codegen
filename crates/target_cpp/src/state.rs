@@ -16,15 +16,6 @@ pub struct CppState {
     cpp_type_indices: BTreeMap<String, usize>, // type name to index in "cpp_types"
 
     root_type: Option<String>,
-
-    // internal code
-    require_get_enum_index_code: bool,
-    require_get_value_index_code: bool,
-    require_array_internal_code: bool,
-    require_map_internal_code: bool,
-    require_set_internal_code: bool,
-    require_json_raw_data_internal_code: bool,
-    require_unique_ptr_internal_code: bool,
 }
 
 impl CppState {
@@ -40,7 +31,7 @@ impl CppState {
             .unwrap_or(name)
     }
 
-    pub fn get_index_from_name(&self, name: &String) -> Option<usize> {
+    pub fn get_index_from_name(&self, name: &str) -> Option<usize> {
         match self.cpp_type_indices.get(name) {
             Some(ridx) => Some(*ridx),
             None => None,
@@ -84,10 +75,6 @@ impl CppState {
     }
 
     pub fn write_forward_declarations(&self) -> String {
-        if self.cpp_types.len() <= 1 {
-            return String::new();
-        }
-
         let forward = (&self.cpp_types)
             .iter()
             .enumerate()
@@ -97,7 +84,7 @@ impl CppState {
             })
             .collect::<String>();
         if forward.is_empty() {
-            String::new()
+            forward
         } else {
             format!("\n// forward declarations\n{}", forward)
         }
@@ -126,7 +113,7 @@ impl CppState {
             .filter_map(|t| t.declare(self, cpp_props))
             .collect::<String>();
         if declares.is_empty() {
-            String::new()
+            declares
         } else {
             format!("\n// declarations{}", declares)
         }
@@ -185,14 +172,13 @@ impl CppState {
             }
             target::Expr::ArrayOf(sub_type) => {
                 let name = format!("std::vector<{}>", sub_type);
-                self.require_array_internal_code = true;
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
                     None => {
                         self.add_include_file("<vector>");
                         let (_, sub_idx) = self.add_incomplete(&sub_type);
-                        let cpp_type = CppTypes::Array(CppArray::new(sub_idx, name.clone()));
-                        self.add_or_replace_cpp_type(name, cpp_type, meta).0
+                        let cpp_type = CppTypes::Array(CppArray::new(sub_idx, &name));
+                        self.add_or_replace_cpp_type(&name, cpp_type, meta).0
                     }
                 }
             }
@@ -206,22 +192,17 @@ impl CppState {
                         self.add_include_file(file);
 
                         let opt_sub = if sub_type.is_empty() {
-                            self.require_set_internal_code = true;
                             None
                         } else {
                             let (_, sub_idx) = self.add_incomplete(&sub_type);
-                            self.require_map_internal_code = true;
                             Some(sub_idx)
                         };
-                        let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub, name.clone()));
-                        self.add_or_replace_cpp_type(name, cpp_type, meta).0
+                        let cpp_type = CppTypes::Dictionary(CppDict::new(opt_sub, &name));
+                        self.add_or_replace_cpp_type(&name, cpp_type, meta).0
                     }
                 }
             }
-            target::Expr::Empty => {
-                self.require_json_raw_data_internal_code = true;
-                "JsonTypedefCodeGen::Data::JsonValue".to_string()
-            }
+            target::Expr::Empty => "JsonTypedefCodeGen::Data::JsonValue".to_string(),
             target::Expr::NullableOf(sub_type) => {
                 let name = format!("std::unique_ptr<{}>", sub_type);
 
@@ -231,15 +212,14 @@ impl CppState {
                     }
                 }
 
-                self.require_unique_ptr_internal_code = true;
                 match self.cpp_type_indices.get(&name) {
                     Some(_) => name,
                     None => {
                         self.add_include_file("<memory>");
 
                         let (_, sub_idx) = self.add_incomplete(&sub_type);
-                        let cpp_type = CppTypes::Nullable(CppNullable::new(sub_idx, sub_type));
-                        self.add_or_replace_cpp_type(name, cpp_type, meta).0
+                        let cpp_type = CppTypes::Nullable(CppNullable::new(sub_idx, &sub_type));
+                        self.add_or_replace_cpp_type(&name, cpp_type, meta).0
                     }
                 }
             }
@@ -247,7 +227,6 @@ impl CppState {
     }
 
     fn toggle_enum_index_code(&mut self) {
-        self.require_get_enum_index_code = true;
         self.add_src_include_file("<array>");
         self.add_src_include_file("<format>");
         self.add_src_include_file("<span>");
@@ -255,52 +234,49 @@ impl CppState {
     }
 
     fn toggle_value_index_code(&mut self) {
-        self.require_get_value_index_code = true;
         self.add_src_include_file("<array>");
         self.add_src_include_file("<format>");
         self.add_src_include_file("<span>");
         self.add_src_include_file("<string_view>");
     }
 
-    pub fn parse_alias(&mut self, name: String, type_: String, meta: Metadata) {
+    pub fn parse_alias(&mut self, name: &str, type_: &str, meta: Metadata) {
         self.set_root_type(&name);
         let (_, _) = self.add_incomplete(&type_);
-        let cpp_type = CppTypes::Alias(CppAlias::new(name.clone(), type_.clone()));
+        let cpp_type = CppTypes::Alias(CppAlias::new(&name, type_));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
-    pub fn parse_enum(&mut self, name: String, members: Vec<target::EnumMember>, meta: Metadata) {
+    pub fn parse_enum(&mut self, name: &str, members: Vec<target::EnumMember>, meta: Metadata) {
         self.set_root_type(&name);
-        let cpp_type = CppTypes::Enum(CppEnum::new(name.clone(), members));
+        let cpp_type = CppTypes::Enum(CppEnum::new(&name, members));
         self.toggle_enum_index_code();
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
-    pub fn parse_struct(&mut self, name: String, fields: Vec<target::Field>, meta: Metadata) {
+    pub fn parse_struct(&mut self, name: &str, fields: Vec<target::Field>, meta: Metadata) {
         self.set_root_type(&name);
-        self.require_map_internal_code = true;
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
         self.toggle_value_index_code();
-        let cpp_type = CppTypes::Struct(CppStruct::new(name.clone(), fields, cpp_type_indices));
+        let cpp_type = CppTypes::Struct(CppStruct::new(&name, fields, cpp_type_indices));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
     }
 
     pub fn parse_discriminator(
         &mut self,
-        name: String,
+        name: &str,
         variants: Vec<target::DiscriminatorVariantInfo>,
-        tag_json_name: String,
-        tag_field_name: String,
+        tag_json_name: &str,
+        tag_field_name: &str,
         meta: Metadata,
     ) {
-        self.set_root_type(&name);
-        self.require_map_internal_code = true;
+        self.set_root_type(name);
         let cpp_type_indices: Vec<usize> = variants
             .iter()
             .map(|v| self.add_incomplete(&v.type_name).1)
             .collect();
         let cpp_type = CppTypes::Discriminator(CppDiscriminator::new(
-            name.clone(),
+            name,
             variants,
             tag_json_name,
             tag_field_name,
@@ -312,17 +288,17 @@ impl CppState {
 
     pub fn parse_discriminator_variant(
         &mut self,
-        name: String,
+        name: &str,
         fields: Vec<target::Field>,
-        tag_field_name: String,
-        tag_json_name: String,
-        tag_value: String,
-        parent_name: String,
+        tag_field_name: &str,
+        tag_json_name: &str,
+        tag_value: &str,
+        parent_name: &str,
         meta: Metadata,
     ) {
         let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
         let cpp_type = CppTypes::DiscriminatorVariant(CppDiscriminatorVariant::new(
-            name.clone(),
+            name,
             fields,
             tag_field_name,
             tag_json_name,
@@ -331,37 +307,32 @@ impl CppState {
             cpp_type_indices,
         ));
         self.toggle_value_index_code();
-        self.add_or_replace_cpp_type(name, cpp_type, meta);
+        self.add_or_replace_cpp_type(&name, cpp_type, meta);
     }
 
     fn add_or_replace_cpp_type(
         &mut self,
-        name: String,
+        name: &str,
         cpp_type: CppTypes,
         meta: Metadata,
     ) -> (String, usize) {
-        match self.cpp_type_indices.get(&name) {
+        match self.cpp_type_indices.get(name) {
             Some(idx) => {
                 let i = *idx;
                 self.replace_incomplete(i, cpp_type, meta);
-                (name, i)
+                (name.to_string(), i)
             }
             None => self.add_cpp_type(name, cpp_type, meta),
         }
     }
 
-    fn add_cpp_type(
-        &mut self,
-        name: String,
-        cpp_type: CppTypes,
-        meta: Metadata,
-    ) -> (String, usize) {
+    fn add_cpp_type(&mut self, name: &str, cpp_type: CppTypes, meta: Metadata) -> (String, usize) {
         let idx = self.cpp_types.len();
-        self.names.push(name.clone());
+        self.names.push(name.to_string());
         self.cpp_types.push(cpp_type);
-        self.cpp_type_indices.insert(name.clone(), idx);
+        self.cpp_type_indices.insert(name.to_string(), idx);
         self.metadatas.push(meta);
-        (name, idx)
+        (name.to_string(), idx)
     }
 
     fn replace_incomplete(&mut self, idx: usize, cpp_type: CppTypes, meta: Metadata) {
@@ -382,16 +353,15 @@ impl CppState {
     }
 
     fn add_primitive(&mut self, prim: Primitives, meta: Metadata) -> (String, usize) {
-        let sname = prim.cpp_name().to_string();
+        let name = prim.cpp_name();
         let cpp_type = CppTypes::Primitive(prim);
-        self.add_or_replace_cpp_type(sname, cpp_type, meta)
+        self.add_or_replace_cpp_type(name, cpp_type, meta)
     }
 
     fn add_incomplete(&mut self, name: &str) -> (String, usize) {
-        let sname = name.to_string();
         match self.cpp_type_indices.get(name) {
-            Some(idx) => (sname, *idx),
-            None => self.add_cpp_type(sname, CppTypes::Incomplete, Metadata::default()),
+            Some(idx) => (name.to_string(), *idx),
+            None => self.add_cpp_type(name, CppTypes::Incomplete, Metadata::default()),
         }
     }
 

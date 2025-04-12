@@ -8,8 +8,11 @@ pub struct CppArray {
 }
 
 impl CppArray {
-    pub fn new(idx: TypeIndex, name: String) -> CppArray {
-        CppArray { idx, name }
+    pub fn new(idx: TypeIndex, name: &str) -> CppArray {
+        CppArray {
+            idx,
+            name: name.to_string(),
+        }
     }
 }
 
@@ -20,8 +23,11 @@ pub struct CppDict {
 }
 
 impl CppDict {
-    pub fn new(opt_idx: Option<TypeIndex>, name: String) -> CppDict {
-        CppDict { opt_idx, name }
+    pub fn new(opt_idx: Option<TypeIndex>, name: &str) -> CppDict {
+        CppDict {
+            opt_idx,
+            name: name.to_string(),
+        }
     }
 }
 
@@ -32,8 +38,11 @@ pub struct CppNullable {
 }
 
 impl CppNullable {
-    pub fn new(idx: TypeIndex, name: String) -> CppNullable {
-        CppNullable { idx, name }
+    pub fn new(idx: TypeIndex, name: &str) -> CppNullable {
+        CppNullable {
+            idx,
+            name: name.to_string(),
+        }
     }
 
     fn get_full_name(&self, cpp_state: &CppState) -> String {

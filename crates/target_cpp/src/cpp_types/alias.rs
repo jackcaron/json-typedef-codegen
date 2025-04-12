@@ -5,8 +5,11 @@ pub struct CppAlias {
 }
 
 impl CppAlias {
-    pub fn new(name: String, sub_type: String) -> CppAlias {
-        CppAlias { name, sub_type }
+    pub fn new(name: &str, sub_type: &str) -> CppAlias {
+        CppAlias {
+            name: name.to_string(),
+            sub_type: sub_type.to_string(),
+        }
     }
 
     pub fn format(&self) -> String {

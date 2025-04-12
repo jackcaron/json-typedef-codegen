@@ -15,17 +15,17 @@ pub struct CppDiscriminator {
 
 impl CppDiscriminator {
     pub fn new(
-        name: String,
+        name: &str,
         variants: Vec<target::DiscriminatorVariantInfo>,
-        tag_json_name: String,
-        tag_field_name: String,
+        tag_json_name: &str,
+        tag_field_name: &str,
         cpp_type_indices: Vec<TypeIndex>,
     ) -> CppDiscriminator {
         CppDiscriminator {
-            name,
+            name: name.to_string(),
             variants,
-            tag_json_name,
-            tag_field_name,
+            tag_json_name: tag_json_name.to_string(),
+            tag_field_name: tag_field_name.to_string(),
             cpp_type_indices,
         }
     }
@@ -148,21 +148,21 @@ pub struct CppDiscriminatorVariant {
 
 impl CppDiscriminatorVariant {
     pub fn new(
-        name: String,
+        name: &str,
         fields: Vec<target::Field>,
-        tag_field_name: String,
-        tag_json_name: String,
-        tag_value: String,
-        parent_name: String,
+        tag_field_name: &str,
+        tag_json_name: &str,
+        tag_value: &str,
+        parent_name: &str,
         cpp_type_indices: Vec<TypeIndex>,
     ) -> CppDiscriminatorVariant {
         CppDiscriminatorVariant {
-            name,
+            name: name.to_string(),
             fields,
-            tag_field_name,
-            tag_json_name,
-            tag_value,
-            parent_name,
+            tag_field_name: tag_field_name.to_string(),
+            tag_json_name: tag_json_name.to_string(),
+            tag_value: tag_value.to_string(),
+            parent_name: parent_name.to_string(),
             cpp_type_indices,
         }
     }

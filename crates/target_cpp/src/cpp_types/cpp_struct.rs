@@ -13,12 +13,12 @@ pub struct CppStruct {
 
 impl CppStruct {
     pub fn new(
-        name: String,
+        name: &str,
         fields: Vec<target::Field>,
         cpp_type_indices: Vec<TypeIndex>,
     ) -> CppStruct {
         CppStruct {
-            name,
+            name: name.to_string(),
             fields,
             cpp_type_indices,
         }

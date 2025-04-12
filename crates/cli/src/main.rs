@@ -154,7 +154,7 @@ fn main() -> Result<()> {
         use jtd_codegen_target_cpp::props::CppProps;
 
         let cpp_props = CppProps::from_file(matches.value_of("cpp-props"))?;
-        let target = jtd_codegen_target_cpp::Target::new(cpp_props, root_name.clone());
+        let target = jtd_codegen_target_cpp::Target::new(cpp_props, &root_name);
 
         let codegen_info =
             jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
