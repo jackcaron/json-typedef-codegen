@@ -9,18 +9,19 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
   public:
     virtual ~AbsSerializer();
 
-    virtual ExpType<bool> write_null() = 0;
-    virtual ExpType<bool> write_bool(const bool b) = 0;
-    virtual ExpType<bool> write_double(const double d) = 0;
-    virtual ExpType<bool> write_i64(const int64_t i) = 0;
-    virtual ExpType<bool> write_u64(const uint64_t u) = 0;
-    virtual ExpType<bool> write_str(const std::string_view str) = 0;
+    virtual ExpType<void> write_null() = 0;
+    virtual ExpType<void> write_bool(const bool b) = 0;
+    virtual ExpType<void> write_double(const double d) = 0;
+    virtual ExpType<void> write_i64(const int64_t i) = 0;
+    virtual ExpType<void> write_u64(const uint64_t u) = 0;
+    virtual ExpType<void> write_str(const std::string_view str) = 0;
 
-    virtual ExpType<bool> start_object() = 0;
-    virtual ExpType<bool> end_object() = 0;
+    virtual ExpType<void> start_object() = 0;
+    virtual ExpType<void> write_key(const std::string_view key) = 0;
+    virtual ExpType<void> end_object() = 0;
 
-    virtual ExpType<bool> start_array() = 0;
-    virtual ExpType<bool> end_array() = 0;
+    virtual ExpType<void> start_array() = 0;
+    virtual ExpType<void> end_array() = 0;
   };
 
 } // namespace JsonTypedefCodeGen::Writer::Specialization

@@ -198,7 +198,7 @@ namespace JsonTypedefCodeGen::Reader {
   }
 
   // ------------------------------------------
-  static UnexpJsonError noPimpl() {
+  static UnexpJsonError no_pimpl() {
     return make_json_error(JsonErrorTypes::Invalid,
                            "invalid/empty JsonValue"sv);
   }
@@ -210,28 +210,28 @@ namespace JsonTypedefCodeGen::Reader {
   }
 
   DLL_PUBLIC ExpType<bool> JsonValue::is_null() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->is_null() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->is_null() : no_pimpl();
   }
   DLL_PUBLIC ExpType<bool> JsonValue::read_bool() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_bool() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_bool() : no_pimpl();
   }
   DLL_PUBLIC ExpType<double> JsonValue::read_double() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_double() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_double() : no_pimpl();
   }
   DLL_PUBLIC ExpType<uint64_t> JsonValue::read_u64() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_u64() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_u64() : no_pimpl();
   }
   DLL_PUBLIC ExpType<int64_t> JsonValue::read_i64() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_i64() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_i64() : no_pimpl();
   }
   DLL_PUBLIC ExpType<std::string> JsonValue::read_str() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_str() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_str() : no_pimpl();
   }
   DLL_PUBLIC ExpType<JsonArray> JsonValue::read_array() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_array() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_array() : no_pimpl();
   }
   DLL_PUBLIC ExpType<JsonObject> JsonValue::read_object() const {
-    return m_pimpl ? Spec::unbase(m_pimpl)->read_object() : noPimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->read_object() : no_pimpl();
   }
 
   DLL_PUBLIC ExpType<Data::JsonValue> JsonValue::clone() const {

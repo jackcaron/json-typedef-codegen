@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "common.hpp"
+#include "json_data.hpp"
 
 namespace JsonTypedefCodeGen::Writer {
 
@@ -30,6 +31,9 @@ namespace JsonTypedefCodeGen::Writer {
     Specialization::SerializerPtr m_pimpl;
     Serializer(Specialization::SerializerPtr&& pimpl);
 
+    ExpType<ExpType<void>> _write_number(const Data::JsonValue& val);
+    ExpType<ExpType<void>> _write(const Data::JsonValue& val);
+
   public:
     Serializer() = default;
     Serializer(const Serializer&) = delete;
@@ -39,18 +43,23 @@ namespace JsonTypedefCodeGen::Writer {
     Serializer& operator=(const Serializer&) = delete;
     Serializer& operator=(Serializer&&) = default;
 
-    ExpType<bool> write_null();
-    ExpType<bool> write_bool(const bool b);
-    ExpType<bool> write_double(const double d);
-    ExpType<bool> write_i64(const int64_t i);
-    ExpType<bool> write_u64(const uint64_t u);
-    ExpType<bool> write_str(const std::string_view str);
+    ExpType<void> write_null();
+    ExpType<void> write_bool(const bool b);
+    ExpType<void> write_double(const double d);
+    ExpType<void> write_i64(const int64_t i);
+    ExpType<void> write_u64(const uint64_t u);
+    ExpType<void> write_str(const std::string_view str);
 
-    ExpType<bool> start_object();
-    ExpType<bool> end_object();
+    ExpType<void> start_object();
+    ExpType<void> write_key(const std::string_view key);
+    ExpType<void> end_object();
 
-    ExpType<bool> start_array();
-    ExpType<bool> end_array();
+    ExpType<void> start_array();
+    ExpType<void> end_array();
+
+    ExpType<void> write(const Data::JsonArray& arr);
+    ExpType<void> write(const Data::JsonObject& obj);
+    ExpType<void> write(const Data::JsonValue& val);
   };
 
 } // namespace JsonTypedefCodeGen::Writer
