@@ -1,0 +1,16 @@
+{
+  "properties":{
+    "u8": {
+      "type":"uint8"
+    },
+    "i16": {
+      "type":"int16"
+    },
+    "u32": {
+      "type":"uint32"
+    },
+    "f32": {
+      "type": "float32"
+    }
+  }
+}
