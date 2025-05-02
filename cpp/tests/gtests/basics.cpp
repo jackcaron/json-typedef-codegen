@@ -3,6 +3,7 @@
 #include "generated/basic_disc.hpp"
 #include "generated/basic_enum.hpp"
 #include "generated/basic_struct.hpp"
+#include "generated/primitives.hpp"
 #include "simd.hpp"
 
 #include <array>
@@ -19,6 +20,7 @@ namespace {
   using ExpBasicEnum = ExpType<test::BasicEnum>;
   using ExpBasicStruct = ExpType<test::BasicStruct>;
   using ExpBasicDisc = ExpType<test::BasicDisc>;
+  using ExpPrims = ExpType<test::Primitives>;
 
   void exp_error(const JsonError& err, const JsonError& exp_err) {
     EXPECT_EQ(err.type, exp_err.type);
@@ -63,6 +65,16 @@ namespace {
     return flatten_expected(Reader::simdjson_root_value(doc.get_value())
                                 .transform([](const auto& val) {
                                   return test::deserialize_BasicDisc(val);
+                                }));
+  }
+
+  ExpPrims get_exp_prims(const padded_str& json_str) {
+    ondemand::parser parser;
+    auto doc = parser.iterate(json_str);
+
+    return flatten_expected(Reader::simdjson_root_value(doc.get_value())
+                                .transform([](const auto& val) {
+                                  return test::deserialize_Primitives(val);
                                 }));
   }
 
@@ -274,6 +286,105 @@ TEST(BASIC, discriminator_err) {
     exp_error(exp_bd.error(),
               JsonError(JsonErrorTypes::Invalid,
                         "Invalid key \"quu\" in BasicDiscBoolean"sv));
+  }
+}
+
+TEST(BASIC, primitives_ok) {
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 2,
+          "i16": -3,
+          "u32": 34,
+          "f32": 3.34
+        } )"_padded);
+
+    EXPECT_TRUE(exp_prim.has_value());
+
+    auto prim = std::move(exp_prim.value());
+    EXPECT_EQ(prim.u8, 2);
+    EXPECT_EQ(prim.i16, -3);
+    EXPECT_EQ(prim.u32, 34);
+    EXPECT_EQ(prim.f32, 3.34f);
+  }
+}
+
+TEST(BASIC, primitives_limits) {
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 300,
+          "i16": -3,
+          "u32": 34,
+          "f32": 3.34
+        } )"_padded);
+
+    EXPECT_FALSE(exp_prim.has_value());
+    exp_error(exp_prim.error(),
+              JsonError(JsonErrorTypes::Number,
+                        "Unsigned value 300 is greater than 255"sv));
+  }
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 3,
+          "i16": -60000,
+          "u32": 34,
+          "f32": 3.34
+        } )"_padded);
+
+    EXPECT_FALSE(exp_prim.has_value());
+    exp_error(exp_prim.error(),
+              JsonError(JsonErrorTypes::Number,
+                        "Signed value -60000 outside limits -32768:32767"sv));
+  }
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 3,
+          "i16": -3,
+          "u32": -34,
+          "f32": 3.34
+        } )"_padded);
+
+    EXPECT_FALSE(exp_prim.has_value());
+    exp_error(
+        exp_prim.error(),
+        JsonError(
+            JsonErrorTypes::WrongType,
+            "INCORRECT_TYPE: The JSON element does not have the requested type."sv));
+  }
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 3,
+          "i16": -3,
+          "u32": 34,
+          "f32": 300e50
+        } )"_padded);
+
+    EXPECT_FALSE(exp_prim.has_value());
+    exp_error(
+        exp_prim.error(),
+        JsonError(
+            JsonErrorTypes::Number,
+            "Double value 3e+52 outside of float limits -3.4028234663852886e+38:3.4028234663852886e+38"sv));
+  }
+  {
+    auto exp_prim = get_exp_prims(
+        R"( {
+          "u8": 3,
+          "i16": -3,
+          "u32": 34,
+          "f32": 3e-40
+        } )"_padded);
+
+    EXPECT_FALSE(exp_prim.has_value());
+    exp_error(
+        exp_prim.error(),
+        JsonError(
+            JsonErrorTypes::Number,
+            "Double value 3e-40 outside of float zeroes limits -1.1754943508222875e-38:1.1754943508222875e-38"sv));
   }
 }
 
