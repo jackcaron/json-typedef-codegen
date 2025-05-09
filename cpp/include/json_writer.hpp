@@ -16,7 +16,7 @@ namespace JsonTypedefCodeGen::Writer {
 
     class BaseSerializer {
     protected:
-      static Serializer create(SerializerPtr&& pimpl);
+      static Serializer create_serializer(SerializerPtr&& pimpl);
 
     public:
       virtual ~BaseSerializer();
@@ -30,9 +30,6 @@ namespace JsonTypedefCodeGen::Writer {
 
     Specialization::SerializerPtr m_pimpl;
     Serializer(Specialization::SerializerPtr&& pimpl);
-
-    ExpType<ExpType<void>> _write_number(const Data::JsonValue& val);
-    ExpType<ExpType<void>> _write(const Data::JsonValue& val);
 
   public:
     Serializer() = default;

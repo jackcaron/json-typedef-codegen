@@ -22,6 +22,13 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
 
     virtual ExpType<void> start_array() = 0;
     virtual ExpType<void> end_array() = 0;
+
+    ExpType<ExpType<void>> _write_number(const Data::JsonValue& val);
+    ExpType<ExpType<void>> _write(const Data::JsonValue& val);
+
+    ExpType<void> write(const Data::JsonArray& arr);
+    ExpType<void> write(const Data::JsonObject& obj);
+    ExpType<void> write(const Data::JsonValue& val);
   };
 
 } // namespace JsonTypedefCodeGen::Writer::Specialization

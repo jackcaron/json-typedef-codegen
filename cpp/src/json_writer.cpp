@@ -6,26 +6,9 @@ using namespace std::string_view_literals;
 
 namespace JsonTypedefCodeGen::Writer {
 
-  namespace Specialization {
-
-    BaseSerializer::~BaseSerializer() {}
-    AbsSerializer::~AbsSerializer() {}
-    Serializer BaseSerializer::create(SerializerPtr&& pimpl) {
-      return Serializer(std::move(pimpl));
-    }
-
-    const AbsSerializer* unbase(const SerializerPtr& base) {
-      return dynamic_cast<const AbsSerializer*>(base.get());
-    }
-    AbsSerializer* unbase(SerializerPtr& base) {
-      return dynamic_cast<AbsSerializer*>(base.get());
-    }
-
-  } // namespace Specialization
-
   namespace {
 
-    UnexpJsonError no_pimpl() {
+    constexpr UnexpJsonError no_pimpl() {
       return make_json_error(JsonErrorTypes::Invalid,
                              "invalid/empty Serializer"sv);
     }
@@ -64,6 +47,104 @@ namespace JsonTypedefCodeGen::Writer {
     }
 
   } // namespace
+
+  namespace Specialization {
+
+    BaseSerializer::~BaseSerializer() {}
+    AbsSerializer::~AbsSerializer() {}
+    Serializer BaseSerializer::create_serializer(SerializerPtr&& pimpl) {
+      return Serializer(std::move(pimpl));
+    }
+
+    ExpType<ExpType<void>>
+    AbsSerializer::_write_number(const Data::JsonValue& val) {
+      switch (val.get_number_type()) {
+      case NumberType::Double:
+        return opt_to_exp(val.read_double()).transform([&](auto d) {
+          return write_double(d);
+        });
+      case NumberType::U64:
+        return opt_to_exp(val.read_u64()).transform([&](auto u) {
+          return write_u64(u);
+        });
+      case NumberType::I64:
+        return opt_to_exp(val.read_i64()).transform([&](auto i) {
+          return write_i64(i);
+        });
+      case NumberType::NaN:
+      default:
+        return make_json_error(JsonErrorTypes::Number);
+      }
+    }
+
+    ExpType<ExpType<void>> AbsSerializer::_write(const Data::JsonValue& val) {
+      switch (val.get_type()) {
+      case JsonTypes::Null:
+        return write_null();
+
+      case JsonTypes::Bool:
+        return opt_to_exp(val.read_bool()).transform([&](bool b) {
+          return write_bool(b);
+        });
+
+      case JsonTypes::Number:
+        return _write_number(val);
+
+      case JsonTypes::Array:
+        return opt_to_exp(val.read_array()).transform([&](auto a) {
+          return write(a);
+        });
+
+      case JsonTypes::Object:
+        return opt_to_exp(val.read_object()).transform([&](auto o) {
+          return write(o);
+        });
+
+      case JsonTypes::String:
+        return opt_to_exp(val.read_str()).transform([&](auto str) {
+          return write_str(str);
+        });
+
+      case JsonTypes::Invalid:
+      default:
+        return make_json_error(JsonErrorTypes::Invalid);
+      }
+    }
+
+    ExpType<void> AbsSerializer::write(const Data::JsonArray& arr) {
+      return chain_void_expected(    //
+          start_array(),             //
+          Data::json_array_for_each( //
+              arr,
+              [&](const auto& item) {
+                return write(item);
+              }),
+          end_array());
+    }
+
+    ExpType<void> AbsSerializer::write(const Data::JsonObject& obj) {
+      return chain_void_expected(     //
+          start_object(),             //
+          Data::json_object_for_each( //
+              obj,
+              [&](const auto key, const auto& item) {
+                return chain_void_expected(write_key(key), write(item));
+              }),
+          end_object());
+    }
+
+    ExpType<void> AbsSerializer::write(const Data::JsonValue& val) {
+      return flatten_expected(_write(val));
+    }
+
+    constexpr const AbsSerializer* unbase(const SerializerPtr& base) {
+      return dynamic_cast<const AbsSerializer*>(base.get());
+    }
+    constexpr AbsSerializer* unbase(SerializerPtr& base) {
+      return dynamic_cast<AbsSerializer*>(base.get());
+    }
+
+  } // namespace Specialization
 
   namespace Spec = Specialization;
 
@@ -109,91 +190,16 @@ namespace JsonTypedefCodeGen::Writer {
   }
 
   // ------------------------------------------
-  ExpType<ExpType<void>> Serializer::_write_number(const Data::JsonValue& val) {
-    switch (val.get_number_type()) {
-    case NumberType::Double:
-      return opt_to_exp(val.read_double()).transform([&](auto d) {
-        return write_double(d);
-      });
-    case NumberType::U64:
-      return opt_to_exp(val.read_u64()).transform([&](auto u) {
-        return write_u64(u);
-      });
-    case NumberType::I64:
-      return opt_to_exp(val.read_i64()).transform([&](auto i) {
-        return write_i64(i);
-      });
-    case NumberType::NaN:
-    default:
-      return make_json_error(JsonErrorTypes::Number);
-    }
-  }
-
-  ExpType<ExpType<void>> Serializer::_write(const Data::JsonValue& val) {
-    switch (val.get_type()) {
-    case JsonTypes::Null:
-      return write_null();
-
-    case JsonTypes::Bool:
-      return opt_to_exp(val.read_bool()).transform([&](bool b) {
-        return write_bool(b);
-      });
-
-    case JsonTypes::Number:
-      return _write_number(val);
-
-    case JsonTypes::Array:
-      return opt_to_exp(val.read_array()).transform([&](auto a) {
-        return write(a);
-      });
-
-    case JsonTypes::Object:
-      return opt_to_exp(val.read_object()).transform([&](auto o) {
-        return write(o);
-      });
-
-    case JsonTypes::String:
-      return opt_to_exp(val.read_str()).transform([&](auto str) {
-        return write_str(str);
-      });
-
-    case JsonTypes::Invalid:
-    default:
-      return make_json_error(JsonErrorTypes::Invalid);
-    }
-  }
-
   DLL_PUBLIC ExpType<void> Serializer::write(const Data::JsonArray& arr) {
-    return chain_void_expected( //
-        start_array(),          //
-        ([&]() -> ExpType<void> {
-          for (auto& item : arr) {
-            if (auto exp = write(item); !exp.has_value()) {
-              return UnexpJsonError(exp.error());
-            }
-          }
-          return ExpType<void>();
-        })(),
-        end_array());
+    return m_pimpl ? Spec::unbase(m_pimpl)->write(arr) : no_pimpl();
   }
 
   DLL_PUBLIC ExpType<void> Serializer::write(const Data::JsonObject& obj) {
-    return chain_void_expected( //
-        start_object(),         //
-        ([&]() -> ExpType<void> {
-          for (auto& [key, item] : obj) {
-            if (auto exp = chain_void_expected(write_key(key), write(item));
-                !exp.has_value()) {
-              return UnexpJsonError(exp.error());
-            }
-          }
-          return ExpType<void>();
-        })(),
-        end_object());
+    return m_pimpl ? Spec::unbase(m_pimpl)->write(obj) : no_pimpl();
   }
 
   DLL_PUBLIC ExpType<void> Serializer::write(const Data::JsonValue& val) {
-    return flatten_expected(_write(val));
+    return m_pimpl ? Spec::unbase(m_pimpl)->write(val) : no_pimpl();
   }
 
 } // namespace JsonTypedefCodeGen::Writer
