@@ -5,27 +5,49 @@
 using namespace std::string_view_literals;
 using NType = nlohmann::detail::value_t;
 
-NlohSerializer::NlohSerializer(NJson root) {
+NlohSerializer::NlohSerializer(NJson& root) : m_root(root) {
   m_states.emplace(root.type() == NType::object ? States::RootObject
                                                 : States::RootArray);
-  m_jsons.emplace(root);
+}
+
+ExpType<void> NlohSerializer::close() {
+  if (m_states.size() == 1 && m_jsons.empty() && m_keys.empty()) {
+    return ExpType<void>();
+  }
+  return make_json_error(
+      JsonErrorTypes::Invalid,
+      "Serializer still have pending operations to complete"sv);
 }
 
 ExpType<void> NlohSerializer::end_item() {
-  auto last_js = json();
+  auto last_js = std::move(json());
   pop_json();
 
   switch (state()) {
   case States::ObjectKey: {
     auto last_key = std::move(m_keys.top());
     m_keys.pop();
-    json()[last_key] = last_js;
     pop_state(); // go back to an object state
+
+    switch (state()) {
+    case States::RootObject:
+      m_root[last_key] = std::move(last_js);
+      break;
+    case States::Object:
+      json()[last_key] = std::move(last_js);
+      break;
+    default:
+      return make_json_error(JsonErrorTypes::Invalid,
+                             "expected to be an object"sv);
+    }
   } break;
 
   case States::RootArray:
+    m_root.push_back(std::move(last_js));
+    break;
+
   case States::Array:
-    json().push_back(last_js);
+    json().push_back(std::move(last_js));
     break;
 
   default:
@@ -140,16 +162,18 @@ ExpType<void> NlohSerializer::end_array() {
   switch (state()) {
   case States::RootArray:
     return make_json_error(JsonErrorTypes::Invalid, "cannot end root array"sv);
+
   case States::Array:
     pop_state(); // move out of the array
     return end_item();
+
   default:
     return make_json_error(JsonErrorTypes::Invalid,
                            "cannot end an object as an array"sv);
   }
 }
 
-Serializer NlohSerializer::create(NJson root) {
+Serializer NlohSerializer::create(NJson& root) {
   return create_serializer(std::make_unique<NlohSerializer>(root));
 }
 
@@ -157,7 +181,7 @@ Serializer NlohSerializer::create(NJson root) {
 // -------------------------------------------
 namespace JsonTypedefCodeGen::Writer {
 
-  DLL_PUBLIC ExpType<Serializer> nlohmann_serializer(NJson root) {
+  DLL_PUBLIC ExpType<Serializer> nlohmann_serializer(NJson& root) {
     switch (root.type()) {
     case NType::array:
     case NType::object:

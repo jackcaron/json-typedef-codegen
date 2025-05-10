@@ -35,10 +35,12 @@ namespace JsonTypedefCodeGen::Writer {
     Serializer() = default;
     Serializer(const Serializer&) = delete;
     Serializer(Serializer&&) = default;
-    ~Serializer() {}
+    ~Serializer();
 
     Serializer& operator=(const Serializer&) = delete;
     Serializer& operator=(Serializer&&) = default;
+
+    ExpType<void> close();
 
     ExpType<void> write_null();
     ExpType<void> write_bool(const bool b);

@@ -36,7 +36,7 @@ if (BUILD_READER)
 endif()
 
 if (BUILD_WRITER)
-  message(FATAL_ERROR "option BUILD_WRITER not supported yet")
+  #
 endif()
 
 # C/C++
@@ -51,7 +51,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
   add_definitions(-D_DEBUG)
   set(TARGET_DIR "Debug")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -fconcepts-diagnostics-depth=3")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O2 -fconcepts-diagnostics-depth=3")
 else()
   add_definitions(-DNDEBUG)
   set(TARGET_DIR "Release")
@@ -99,6 +99,21 @@ include_directories("${CMAKE_SOURCE_DIR}/include")
 file(GLOB_RECURSE INC_HPP "include/*.hpp")
 file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
 
+if (ENABLE_NLOH_JSON)
+  set(NLOH_JSON_DIR "${EXT_LIB_NLOH_JSON_PATH}/nlohmann")
+  if (NOT EXISTS ${NLOH_JSON_DIR})
+    message(FATAL_ERROR "cannot find \"nlohmann\" directory in ${EXT_LIB_NLOH_JSON_PATH}")
+  endif()
+
+  file(GLOB_RECURSE NLOHJSONEXT "${NLOH_JSON_DIR}/*.hpp")
+  list(LENGTH NLOHJSONEXT NLOHJSONEXT_LEN)
+  if (NLOHJSONEXT_LEN EQUAL 0)
+    message(FATAL_ERROR "cannot find nlohmann header files")
+  endif()
+
+  include_directories("${EXT_LIB_NLOH_JSON_PATH}")
+endif()
+
 # reader library options
 if (BUILD_READER)
 
@@ -124,21 +139,9 @@ if (BUILD_READER)
   endif()
 
   if (ENABLE_NLOH_JSON)
-    set(NLOH_JSON_DIR "${EXT_LIB_NLOH_JSON_PATH}/nlohmann")
-    if (NOT EXISTS ${NLOH_JSON_DIR})
-      message(FATAL_ERROR "cannot find \"nlohmann\" directory in ${EXT_LIB_NLOH_JSON_PATH}")
-    endif()
-
-    file(GLOB_RECURSE NLOHJSONEXT "${NLOH_JSON_DIR}/*.hpp")
-    list(LENGTH NLOHJSONEXT NLOHJSONEXT_LEN)
-    if (NLOHJSONEXT_LEN EQUAL 0)
-      message(FATAL_ERROR "cannot find nlohmann header files")
-    endif()
-
     add_definitions(-DUSE_IN_NLOH)
-    include_directories("${EXT_LIB_NLOH_JSON_PATH}")
     file(GLOB NLOHJSONSRC "src/nlohmann_reader/*.cpp" "src/nlohmann_reader/*.hpp")
-    set(CPPSRC ${CPPSRC} ${NLOHJSONSRC} ${NLOHJSONEXT})
+    set(CPPSRC ${CPPSRC} ${NLOHJSONSRC})
   endif()
 
   if (ENABLE_NAPI)
@@ -151,7 +154,13 @@ endif()
 
 # writer library options
 if (BUILD_WRITER)
-  # LATER
+
+  if (ENABLE_NLOH_JSON)
+    add_definitions(-DUSE_OUT_NLOH)
+    file(GLOB NLOHJSONSRC "src/nlohmann_writer/*.cpp" "src/nlohmann_writer/*.hpp")
+    set(CPPSRC ${CPPSRC} ${NLOHJSONSRC})
+  endif()
+
 endif()
 
 # static/shared library

@@ -21,6 +21,7 @@ enum class States : uint8_t {
 
 class NlohSerializer final : public Specialization::AbsSerializer {
 private:
+  NJson& m_root;
   std::stack<States> m_states;
   std::stack<NJson> m_jsons;
   std::stack<std::string> m_keys;
@@ -29,7 +30,7 @@ private:
   inline void push_state(const States state) { m_states.emplace(state); }
   inline void pop_state() { m_states.pop(); }
 
-  inline NJson json() { return m_jsons.top(); }
+  inline NJson& json() { return m_jsons.top(); }
   inline void push_json(NJson js) { m_jsons.emplace(js); }
   inline void pop_json() { m_jsons.pop(); }
 
@@ -37,8 +38,10 @@ private:
 
 public:
   NlohSerializer() = delete;
-  NlohSerializer(NJson root);
+  NlohSerializer(NJson& root);
   ~NlohSerializer() {}
+
+  virtual ExpType<void> close() override;
 
   virtual ExpType<void> write_null() override;
   virtual ExpType<void> write_bool(const bool b) override;
@@ -54,5 +57,5 @@ public:
   virtual ExpType<void> start_array() override;
   virtual ExpType<void> end_array() override;
 
-  static Serializer create(NJson root);
+  static Serializer create(NJson& root);
 };

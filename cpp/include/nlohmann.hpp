@@ -25,7 +25,7 @@ namespace JsonTypedefCodeGen::Writer {
   /**
    * root: object or array to populate
    */
-  ExpType<Serializer> nlohmann_serializer(nlohmann::json root);
+  ExpType<Serializer> nlohmann_serializer(nlohmann::json& root);
 
 } // namespace JsonTypedefCodeGen::Writer
 

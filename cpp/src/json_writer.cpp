@@ -153,6 +153,17 @@ namespace JsonTypedefCodeGen::Writer {
   Serializer::Serializer(Specialization::SerializerPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
+  DLL_PUBLIC Serializer::~Serializer() { close(); }
+
+  DLL_PUBLIC ExpType<void> Serializer::close() {
+    if (m_pimpl) {
+      auto res = Spec::unbase(m_pimpl)->close();
+      m_pimpl.reset();
+      return res;
+    }
+    return ExpType<void>();
+  }
+
   DLL_PUBLIC ExpType<void> Serializer::write_null() {
     return m_pimpl ? Spec::unbase(m_pimpl)->write_null() : no_pimpl();
   }
@@ -179,14 +190,14 @@ namespace JsonTypedefCodeGen::Writer {
     return m_pimpl ? Spec::unbase(m_pimpl)->write_key(key) : no_pimpl();
   }
   DLL_PUBLIC ExpType<void> Serializer::end_object() {
-    return m_pimpl ? Spec::unbase(m_pimpl)->start_object() : no_pimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->end_object() : no_pimpl();
   }
 
   DLL_PUBLIC ExpType<void> Serializer::start_array() {
-    return m_pimpl ? Spec::unbase(m_pimpl)->start_object() : no_pimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->start_array() : no_pimpl();
   }
   DLL_PUBLIC ExpType<void> Serializer::end_array() {
-    return m_pimpl ? Spec::unbase(m_pimpl)->start_object() : no_pimpl();
+    return m_pimpl ? Spec::unbase(m_pimpl)->end_array() : no_pimpl();
   }
 
   // ------------------------------------------

@@ -9,6 +9,8 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
   public:
     virtual ~AbsSerializer();
 
+    virtual ExpType<void> close() = 0;
+
     virtual ExpType<void> write_null() = 0;
     virtual ExpType<void> write_bool(const bool b) = 0;
     virtual ExpType<void> write_double(const double d) = 0;
