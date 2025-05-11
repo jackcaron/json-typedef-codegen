@@ -57,27 +57,31 @@ namespace JsonTypedefCodeGen::Writer {
     }
 
     ExpType<ExpType<void>>
-    AbsSerializer::_write_number(const Data::JsonValue& val) {
+    AbsSerializer::write_number(const Data::JsonValue& val) {
       switch (val.get_number_type()) {
       case NumberType::Double:
         return opt_to_exp(val.read_double()).transform([&](auto d) {
           return write_double(d);
         });
+
       case NumberType::U64:
         return opt_to_exp(val.read_u64()).transform([&](auto u) {
           return write_u64(u);
         });
+
       case NumberType::I64:
         return opt_to_exp(val.read_i64()).transform([&](auto i) {
           return write_i64(i);
         });
+
       case NumberType::NaN:
       default:
         return make_json_error(JsonErrorTypes::Number);
       }
     }
 
-    ExpType<ExpType<void>> AbsSerializer::_write(const Data::JsonValue& val) {
+    ExpType<ExpType<void>>
+    AbsSerializer::write_val(const Data::JsonValue& val) {
       switch (val.get_type()) {
       case JsonTypes::Null:
         return write_null();
@@ -88,7 +92,7 @@ namespace JsonTypedefCodeGen::Writer {
         });
 
       case JsonTypes::Number:
-        return _write_number(val);
+        return write_number(val);
 
       case JsonTypes::Array:
         return opt_to_exp(val.read_array()).transform([&](auto a) {
@@ -111,30 +115,43 @@ namespace JsonTypedefCodeGen::Writer {
       }
     }
 
+    ExpType<void> AbsSerializer::write_key_val(const std::string_view key,
+                                               const Data::JsonValue& val) {
+      return chain_exec_void_expected(
+          [&]() {
+            return write_key(key);
+          },
+          [&]() {
+            return write(val);
+          });
+    }
+
     ExpType<void> AbsSerializer::write(const Data::JsonArray& arr) {
-      return chain_void_expected(    //
-          start_array(),             //
-          Data::json_array_for_each( //
-              arr,
-              [&](const auto& item) {
-                return write(item);
-              }),
-          end_array());
+      auto w_item = [&](auto item) {
+        return write(item);
+      };
+      return chain_exec_void_expected(
+          start_array_exec(),
+          [&]() {
+            return arr.for_each(w_item);
+          },
+          end_array_exec());
     }
 
     ExpType<void> AbsSerializer::write(const Data::JsonObject& obj) {
-      return chain_void_expected(     //
-          start_object(),             //
-          Data::json_object_for_each( //
-              obj,
-              [&](const auto key, const auto& item) {
-                return chain_void_expected(write_key(key), write(item));
-              }),
-          end_object());
+      auto key_val = [&](auto key, auto val) {
+        return write_key_val(key, val);
+      };
+      return chain_exec_void_expected(
+          start_object_exec(),
+          [&]() {
+            return obj.for_each(key_val);
+          },
+          end_object_exec());
     }
 
     ExpType<void> AbsSerializer::write(const Data::JsonValue& val) {
-      return flatten_expected(_write(val));
+      return flatten_expected(write_val(val));
     }
 
     constexpr const AbsSerializer* unbase(const SerializerPtr& base) {
@@ -150,7 +167,7 @@ namespace JsonTypedefCodeGen::Writer {
 
   // ------------------------------------------
 
-  Serializer::Serializer(Specialization::SerializerPtr&& pimpl)
+  Serializer::Serializer(Spec::SerializerPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
   DLL_PUBLIC Serializer::~Serializer() { close(); }
@@ -200,7 +217,6 @@ namespace JsonTypedefCodeGen::Writer {
     return m_pimpl ? Spec::unbase(m_pimpl)->end_array() : no_pimpl();
   }
 
-  // ------------------------------------------
   DLL_PUBLIC ExpType<void> Serializer::write(const Data::JsonArray& arr) {
     return m_pimpl ? Spec::unbase(m_pimpl)->write(arr) : no_pimpl();
   }

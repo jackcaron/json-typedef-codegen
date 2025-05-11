@@ -5,10 +5,12 @@
 using namespace std::string_view_literals;
 using NType = nlohmann::detail::value_t;
 
-NlohSerializer::NlohSerializer(NJson& root) : m_root(root) {
-  m_states.emplace(root.type() == NType::object ? States::RootObject
-                                                : States::RootArray);
+inline States get_root_state(const NJson& root) {
+  return root.type() == NType::object ? States::RootObject : States::RootArray;
 }
+
+NlohSerializer::NlohSerializer(NJson& root) //
+    : m_root(root), m_states({get_root_state(root)}) {}
 
 ExpType<void> NlohSerializer::close() {
   if (m_states.size() == 1 && m_jsons.empty() && m_keys.empty()) {

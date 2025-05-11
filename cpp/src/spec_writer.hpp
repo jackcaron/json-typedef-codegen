@@ -25,12 +25,36 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
     virtual ExpType<void> start_array() = 0;
     virtual ExpType<void> end_array() = 0;
 
-    ExpType<ExpType<void>> _write_number(const Data::JsonValue& val);
-    ExpType<ExpType<void>> _write(const Data::JsonValue& val);
+    ExpType<ExpType<void>> write_number(const Data::JsonValue& val);
+    ExpType<ExpType<void>> write_val(const Data::JsonValue& val);
+    ExpType<void> write_key_val(const std::string_view key,
+                                const Data::JsonValue& val);
 
     ExpType<void> write(const Data::JsonArray& arr);
     ExpType<void> write(const Data::JsonObject& obj);
     ExpType<void> write(const Data::JsonValue& val);
+
+    inline ExpVoidFn start_object_exec() {
+      return [&]() {
+        return start_object();
+      };
+    }
+    inline ExpVoidFn end_object_exec() {
+      return [&]() {
+        return end_object();
+      };
+    }
+
+    inline ExpVoidFn start_array_exec() {
+      return [&]() {
+        return start_array();
+      };
+    }
+    inline ExpVoidFn end_array_exec() {
+      return [&]() {
+        return end_array();
+      };
+    }
   };
 
 } // namespace JsonTypedefCodeGen::Writer::Specialization
