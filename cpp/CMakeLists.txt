@@ -161,6 +161,12 @@ if (BUILD_WRITER)
     set(CPPSRC ${CPPSRC} ${NLOHJSONSRC})
   endif()
 
+  if (ENABLE_NAPI)
+    add_definitions(-DUSE_OUT_NAPI)
+    file(GLOB_RECURSE NAPISRC "src/napi_writer/*.cpp" "src/napi_writer/*.hpp")
+    set(CPPSRC ${CPPSRC} ${NAPISRC})
+  endif()
+
 endif()
 
 # static/shared library

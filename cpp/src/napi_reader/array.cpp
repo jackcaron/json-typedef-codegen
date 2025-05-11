@@ -6,7 +6,7 @@ using namespace std::string_view_literals;
 
 ExpType<JsonValue> NapiArrayIterator::get() const {
   if (const auto val = m_array.Get(m_index); val.IsEmpty()) {
-    return makeJsonError(JsonErrorTypes::Invalid, "Empty value"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "Empty value"sv);
   } else {
     return NapiValue::create(val);
   }

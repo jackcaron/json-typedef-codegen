@@ -18,9 +18,14 @@ namespace JsonTypedefCodeGen::Reader {
 
 #ifdef USE_OUT_NAPI
 
+#include "json_writer.hpp"
+
 namespace JsonTypedefCodeGen::Writer {
 
-  //
+  /**
+   * root: object or array to populate
+   */
+  ExpType<Serializer> napi_serializer(Napi::Value& root);
 
 } // namespace JsonTypedefCodeGen::Writer
 

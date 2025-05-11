@@ -4,6 +4,8 @@
   "scripts": {
     "build-dev": "cmake-js build -D",
     "build": "cmake-js build",
+    "build-writer-dev": "cmake-js build -D --CDBUILD_WRITER=ON",
+    "build-writer": "cmake-js build --CDBUILD_WRITER=ON",
     "test-dev": "node -p \"process.exit(require('./lib/Debug/json_wrapper_tests').run())\"",
     "test": "node -p \"process.exit(require('./lib/Release/json_wrapper_tests').run())\""
   },
