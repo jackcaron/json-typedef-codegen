@@ -284,4 +284,71 @@ TEST(NLOH_WRITE, object_of_items) {
   }
 }
 
+TEST(NLOH_WRITE, raw_data) {
+  {
+    NJson jsarr = NJson::array();
+    expect_serial(jsarr, [](auto& serial) {
+      expect_ok_op(serial.write(Data::JsonValue(true)));
+      expect_ok_op(serial.write(Data::JsonValue(false)));
+      expect_ok_op(serial.write(Data::JsonValue(uint64_t(25))));
+    });
+
+    EXPECT_EQ(jsarr.size(), 3);
+    EXPECT_EQ(jsarr[0], true);
+    EXPECT_EQ(jsarr[1], false);
+    EXPECT_EQ(jsarr[2], 25);
+  }
+  {
+    NJson jsarr = NJson::array();
+    expect_serial(jsarr, [](auto& serial) {
+      Data::JsonArray arr;
+      expect_ok_op(serial.write(arr));
+    });
+
+    EXPECT_EQ(jsarr.size(), 1);
+  }
+  {
+    NJson jsarr = NJson::array();
+    expect_serial(jsarr, [](auto& serial) {
+      Data::JsonArray arr;
+      for (int i = 0; i < 4; ++i) {
+        arr.internal().emplace_back(uint64_t(i));
+      }
+      expect_ok_op(serial.write(arr));
+    });
+
+    EXPECT_EQ(jsarr.size(), 1);
+    auto& subarr = jsarr[0];
+    for (int i = 0; i < 4; ++i) {
+      EXPECT_EQ(subarr[i], i);
+    }
+  }
+  {
+    NJson jsarr = NJson::array();
+    expect_serial(jsarr, [](auto& serial) {
+      Data::JsonObject obj;
+      expect_ok_op(serial.write(obj));
+      expect_ok_op(serial.write(Data::JsonValue(obj)));
+    });
+
+    EXPECT_EQ(jsarr.size(), 2);
+  }
+  {
+    NJson jsarr = NJson::array();
+    expect_serial(jsarr, [](auto& serial) {
+      Data::JsonObject obj;
+      obj.internal().insert({std::string("bob"sv), Data::JsonValue(true)});
+      obj.internal().insert(
+          {std::string("alice"sv), Data::JsonValue("gary"sv)});
+      expect_ok_op(serial.write(obj));
+    });
+
+    EXPECT_EQ(jsarr.size(), 1);
+    auto& subobj = jsarr[0];
+    EXPECT_EQ(subobj.size(), 2);
+    EXPECT_EQ(subobj["bob"sv], true);
+    EXPECT_EQ(subobj["alice"sv], "gary"sv);
+  }
+}
+
 #endif
