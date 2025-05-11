@@ -3,7 +3,6 @@
 #include "common.hpp"
 
 #include <cstdint>
-#include <functional>
 #include <map>
 #include <memory>
 #include <optional>
@@ -17,6 +16,8 @@
 namespace JsonTypedefCodeGen::Data {
 
   class JsonValue;
+  class JsonArray;
+  class JsonObject;
 
   namespace Specialization {
     using JsonArray = std::vector<JsonValue>;
@@ -25,6 +26,19 @@ namespace JsonTypedefCodeGen::Data {
     using JsonArrayPtr = std::shared_ptr<JsonArray>;
     using JsonObjectPtr = std::shared_ptr<JsonObject>;
   } // namespace Specialization
+
+  // Iterator Utils, stop at the first error
+  using ArrayForEachFn = std::function<ExpType<void>(const JsonValue&)>;
+  using ObjectForEachFn =
+      std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
+
+  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb);
+  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb);
+
+  ExpType<void> json_object_for_each(const JsonObject& object,
+                                     ObjectForEachFn cb);
+  ExpType<void> json_object_for_each(const JsonValue& value,
+                                     ObjectForEachFn cb);
 
   class JsonArray {
   private:
@@ -52,6 +66,10 @@ namespace JsonTypedefCodeGen::Data {
 
     Specialization::JsonArray& internal();
     const Specialization::JsonArray& internal() const;
+
+    inline ExpType<void> for_each(ArrayForEachFn cb) const {
+      return json_array_for_each(*this, cb);
+    }
   };
 
   class JsonObject {
@@ -80,6 +98,10 @@ namespace JsonTypedefCodeGen::Data {
 
     Specialization::JsonObject& internal();
     const Specialization::JsonObject& internal() const;
+
+    inline ExpType<void> for_each(ObjectForEachFn cb) const {
+      return json_object_for_each(*this, cb);
+    }
   };
 
   class JsonValue {
@@ -136,18 +158,5 @@ namespace JsonTypedefCodeGen::Data {
     std::optional<JsonArray> read_array() const;
     std::optional<JsonObject> read_object() const;
   };
-
-  // Iterator Utils, stop at the first error
-  using ArrayForEachFn = std::function<ExpType<void>(const JsonValue&)>;
-  using ObjectForEachFn =
-      std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
-
-  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb);
-  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb);
-
-  ExpType<void> json_object_for_each(const JsonObject& object,
-                                     ObjectForEachFn cb);
-  ExpType<void> json_object_for_each(const JsonValue& value,
-                                     ObjectForEachFn cb);
 
 } // namespace JsonTypedefCodeGen::Data

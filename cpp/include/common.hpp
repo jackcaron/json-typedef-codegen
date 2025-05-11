@@ -1,6 +1,7 @@
 #pragma once
 
 #include <expected>
+#include <functional>
 #include <string>
 #include <string_view>
 
@@ -111,6 +112,30 @@ namespace JsonTypedefCodeGen {
       return chain_void_expected(etc...);
     }
     return first;
+  }
+
+  constexpr ExpType<void>
+  chain_void_expected(std::initializer_list<ExpType<void>> list) {
+    for (auto& item : list) {
+      if (!item.has_value()) {
+        return item;
+      }
+    }
+    return ExpType<void>();
+  }
+
+  using ExpVoidFn = std::function<ExpType<void>()>;
+  constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn fn) {
+    return fn();
+  }
+
+  template <typename... Xp>
+  constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn first, Xp... etc) {
+    if (auto exp = first(); exp.has_value()) {
+      return chain_exec_void_expected(etc...);
+    } else {
+      return exp;
+    }
   }
 
 } // namespace JsonTypedefCodeGen
