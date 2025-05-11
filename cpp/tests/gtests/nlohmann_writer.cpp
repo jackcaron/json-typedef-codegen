@@ -8,11 +8,11 @@
 
 using namespace JsonTypedefCodeGen;
 using namespace std::string_view_literals;
-using namespace nlohmann::json_literals; // ??
 
 using NJson = nlohmann::json;
 
-void expect_invalid_serial(ExpType<Writer::Serializer> exp) {
+void expect_invalid_serial(NJson& js) {
+  auto exp = Writer::nlohmann_serializer(js);
   EXPECT_FALSE(exp.has_value());
 
   auto err = std::move(exp.error());
@@ -48,19 +48,19 @@ void expect_serial(NJson& root, std::function<void(Writer::Serializer&)> fn,
 TEST(NLOH_WRITE, invalid_root) {
   {
     NJson js(nullptr);
-    expect_invalid_serial(Writer::nlohmann_serializer(js));
+    expect_invalid_serial(js);
   }
   {
     NJson js(false);
-    expect_invalid_serial(Writer::nlohmann_serializer(js));
+    expect_invalid_serial(js);
   }
   {
     NJson js("bob"sv);
-    expect_invalid_serial(Writer::nlohmann_serializer(js));
+    expect_invalid_serial(js);
   }
   {
     NJson js(23.01);
-    expect_invalid_serial(Writer::nlohmann_serializer(js));
+    expect_invalid_serial(js);
   }
 }
 
