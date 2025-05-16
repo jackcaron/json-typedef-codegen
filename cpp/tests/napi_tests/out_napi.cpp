@@ -15,7 +15,10 @@ void __expect_invalid_serial(Napi::Env env, bool& ___success,
   NAPI_EXP_FALSE(exp.has_value());
 }
 #define expect_invalid_serial(root)                                            \
-  __expect_invalid_serial(env, ___success, root)
+  __expect_invalid_serial(env, ___success, root);                              \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_invalid_op(Napi::Env env, bool& ___success, ExpType<void> res) {
   NAPI_EXP_FALSE(res.has_value());
@@ -23,12 +26,20 @@ void __expect_invalid_op(Napi::Env env, bool& ___success, ExpType<void> res) {
   auto err = std::move(res.error());
   NAPI_EXP_TRUE(err.type == JsonErrorTypes::Invalid);
 }
-#define expect_invalid_op(res) __expect_invalid_op(env, ___success, res)
+#define expect_invalid_op(res)                                                 \
+  __expect_invalid_op(env, ___success, res);                                   \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_ok_op(Napi::Env env, bool& ___success, ExpType<void> res) {
   NAPI_EXP_TRUE(res.has_value());
 }
-#define expect_ok_op(res) __expect_ok_op(env, ___success, res)
+#define expect_ok_op(res)                                                      \
+  __expect_ok_op(env, ___success, res);                                        \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_serial(Napi::Env env, bool& ___success, Napi::Value& root,
                      std::function<void(Writer::Serializer&)> fn,
@@ -69,7 +80,11 @@ void __expect_number(Napi::Env env, bool& ___success, Napi::Value val,
     }
   }
 }
-#define expect_number(v, x) __expect_number(env, ___success, v, x)
+#define expect_number(v, x)                                                    \
+  __expect_number(env, ___success, v, x);                                      \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_str(Napi::Env env, bool& ___success, Napi::Value val,
                   const std::string_view exp) {
@@ -77,20 +92,32 @@ void __expect_str(Napi::Env env, bool& ___success, Napi::Value val,
   auto nxp = Napi::String::New(env, exp.data(), exp.size());
   NAPI_EXP_TRUE(val.ToString() == nxp);
 }
-#define expect_str(v, x) __expect_str(env, ___success, v, x)
+#define expect_str(v, x)                                                       \
+  __expect_str(env, ___success, v, x);                                         \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_bool(Napi::Env env, bool& ___success, Napi::Value val,
                    const bool exp) {
   NAPI_EXP_TRUE(val.IsBoolean());
   NAPI_EXP_TRUE(val.ToBoolean() == exp);
 }
-#define expect_bool(v, x) __expect_bool(env, ___success, v, x)
+#define expect_bool(v, x)                                                      \
+  __expect_bool(env, ___success, v, x);                                        \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 void __expect_obj_size(Napi::Env env, bool& ___success, Napi::Object& obj,
                        const uint32_t exp) {
   NAPI_EXP_TRUE(obj.GetPropertyNames().Length() == exp);
 }
-#define expect_obj_size(v, x) __expect_obj_size(env, ___success, v, x)
+#define expect_obj_size(v, x)                                                  \
+  __expect_obj_size(env, ___success, v, x);                                    \
+  if (!___success) {                                                           \
+    return;                                                                    \
+  }
 
 // -----------------------------------------
 

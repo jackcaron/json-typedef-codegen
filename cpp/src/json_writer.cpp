@@ -161,6 +161,94 @@ namespace JsonTypedefCodeGen::Writer {
       return dynamic_cast<AbsSerializer*>(base.get());
     }
 
+    //   -   -   -   -   -   -   -   -   -   -   -   -
+
+    StateBaseSerializer::StateBaseSerializer(const States init_state)
+        : m_states({init_state}) {}
+    StateBaseSerializer::~StateBaseSerializer() {}
+
+    ExpType<void> StateBaseSerializer::can_start_object() const {
+      switch (state()) {
+      case States::RootObject:
+      case States::Object:
+        return make_json_error(
+            JsonErrorTypes::Invalid,
+            "a key is required to create an object inside base object"sv);
+
+      default:
+        return ExpType<void>();
+      }
+    }
+
+    ExpType<void> StateBaseSerializer::can_end_object() const {
+      switch (state()) {
+      case States::RootArray:
+      case States::Array:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "cannot end an array as an object"sv);
+
+      case States::RootObject:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "cannot end root object"sv);
+
+      case States::Object:
+      default:
+        return ExpType<void>();
+
+      case States::ObjectKey:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "closing an object before resolving a key"sv);
+      }
+    }
+
+    ExpType<void> StateBaseSerializer::can_start_array() const {
+      switch (state()) {
+      case States::RootObject:
+      case States::Object:
+        return make_json_error(
+            JsonErrorTypes::Invalid,
+            "a key is required to create an array inside an object"sv);
+
+      default:
+        return ExpType<void>();
+      }
+    }
+
+    ExpType<void> StateBaseSerializer::can_end_array() const {
+      switch (state()) {
+      case States::RootArray:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "cannot end root array"sv);
+
+      case States::Array:
+        return ExpType<void>();
+
+      default:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "cannot end an object as an array"sv);
+      }
+    }
+
+    ExpType<void> StateBaseSerializer::write_key(const std::string_view key) {
+      switch (state()) {
+      case States::RootObject:
+      case States::Object:
+      default:
+        push_state(States::ObjectKey);
+        push_key(key);
+        return ExpType<void>();
+
+      case States::ObjectKey:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "object already has a key"sv);
+
+      case States::RootArray:
+      case States::Array:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "cannot write a key in an array"sv);
+      }
+    }
+
   } // namespace Specialization
 
   namespace Spec = Specialization;

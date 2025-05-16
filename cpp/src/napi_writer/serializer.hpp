@@ -3,30 +3,14 @@
 #include "../spec_writer.hpp"
 
 #include <napi.h>
-#include <stack>
 
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Writer;
 
-enum class States : uint8_t {
-  RootArray,
-  Array,
-
-  RootObject,
-  Object,
-  ObjectKey
-};
-
-class NapiSerializer final : public Specialization::AbsSerializer {
+class NapiSerializer final : public Specialization::StateBaseSerializer {
 private:
   Napi::Value m_root;
-  std::stack<States> m_states;
   std::stack<Napi::Value> m_jsons;
-  std::stack<std::string> m_keys;
-
-  inline States state() const { return m_states.top(); }
-  inline void push_state(const States state) { m_states.emplace(state); }
-  inline void pop_state() { m_states.pop(); }
 
   inline Napi::Value& json() { return m_jsons.top(); }
   inline void push_json(Napi::Value js) { m_jsons.emplace(js); }
@@ -49,7 +33,6 @@ public:
   virtual ExpType<void> write_str(const std::string_view str) override;
 
   virtual ExpType<void> start_object() override;
-  virtual ExpType<void> write_key(const std::string_view key) override;
   virtual ExpType<void> end_object() override;
 
   virtual ExpType<void> start_array() override;

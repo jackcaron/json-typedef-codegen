@@ -4,16 +4,17 @@
 
 using namespace std::string_view_literals;
 using NType = nlohmann::detail::value_t;
+using namespace JsonTypedefCodeGen::Writer::Specialization;
 
 inline States get_root_state(const NJson& root) {
   return root.type() == NType::object ? States::RootObject : States::RootArray;
 }
 
 NlohSerializer::NlohSerializer(NJson& root) //
-    : m_root(root), m_states({get_root_state(root)}) {}
+    : StateBaseSerializer(get_root_state(root)), m_root(root) {}
 
 ExpType<void> NlohSerializer::close() {
-  if (m_states.size() == 1 && m_jsons.empty() && m_keys.empty()) {
+  if (can_close() && m_jsons.empty()) {
     return ExpType<void>();
   }
   return make_json_error(
@@ -27,8 +28,8 @@ ExpType<void> NlohSerializer::end_item() {
 
   switch (state()) {
   case States::ObjectKey: {
-    auto last_key = std::move(m_keys.top());
-    m_keys.pop();
+    auto last_key = std::move(key());
+    pop_key();
     pop_state(); // go back to an object state
 
     switch (state()) {
@@ -90,89 +91,31 @@ ExpType<void> NlohSerializer::write_str(const std::string_view str) {
 }
 
 ExpType<void> NlohSerializer::start_object() {
-  switch (state()) {
-  case States::RootObject:
-  case States::Object:
-    return make_json_error(
-        JsonErrorTypes::Invalid,
-        "a key is required to create an object inside base object"sv);
-
-  default:
+  return can_start_object().transform([&]() -> void {
     push_state(States::Object);
     push_json(NJson::object());
-    return ExpType<void>();
-  }
-}
-
-ExpType<void> NlohSerializer::write_key(const std::string_view key) {
-  switch (state()) {
-  case States::RootObject:
-  case States::Object:
-  default:
-    push_state(States::ObjectKey);
-    m_keys.emplace(key);
-    return ExpType<void>();
-
-  case States::ObjectKey:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "object already has a key"sv);
-
-  case States::RootArray:
-  case States::Array:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "cannot write a key in an array"sv);
-  }
+  });
 }
 
 ExpType<void> NlohSerializer::end_object() {
-  switch (state()) {
-  case States::RootArray:
-  case States::Array:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "cannot end an array as an object"sv);
-
-  case States::RootObject:
-    return make_json_error(JsonErrorTypes::Invalid, "cannot end root object"sv);
-
-  case States::Object:
-  default:
-    pop_state(); // move out of the object
+  return flatten_expected(can_end_object().transform([&]() -> ExpType<void> {
+    pop_state();
     return end_item();
-
-  case States::ObjectKey:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "closing an object before resolving a key"sv);
-  }
+  }));
 }
 
 ExpType<void> NlohSerializer::start_array() {
-  switch (state()) {
-  case States::RootObject:
-  case States::Object:
-    return make_json_error(
-        JsonErrorTypes::Invalid,
-        "a key is required to create an array inside an object"sv);
-
-  default:
+  return can_start_array().transform([&]() -> void {
     push_state(States::Array);
     push_json(NJson::array());
-    return ExpType<void>();
-  }
+  });
 }
 
 ExpType<void> NlohSerializer::end_array() {
-  switch (state()) {
-  case States::RootArray:
-    return make_json_error(JsonErrorTypes::Invalid, "cannot end root array"sv);
-
-  case States::Array:
+  return flatten_expected(can_end_array().transform([&]() -> ExpType<void> {
     pop_state(); // move out of the array
     return end_item();
-
-  default:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "cannot end an object as an array"sv);
-  }
+  }));
 }
 
 Serializer NlohSerializer::create(NJson& root) {
