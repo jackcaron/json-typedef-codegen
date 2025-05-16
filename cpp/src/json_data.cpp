@@ -17,7 +17,11 @@ namespace {
     Object
   };
 
-  JsonTypes map_variant(const AllValuesTypes val) {
+  constexpr bool operator==(const size_t s, const AllValuesTypes t) {
+    return AllValuesTypes(s) == t;
+  }
+
+  constexpr JsonTypes map_variant(const AllValuesTypes val) {
     switch (val) {
     case AllValuesTypes::Null:
       return JsonTypes::Null;
@@ -37,6 +41,13 @@ namespace {
       break;
     }
     return JsonTypes::Invalid;
+  }
+
+  template <AllValuesTypes avt, typename... _Types>
+  constexpr const std::variant_alternative_t<size_t(avt),
+                                             std::variant<_Types...>>&
+  get(const std::variant<_Types...>& __v) {
+    return std::get<size_t(avt)>(__v);
   }
 
 } // namespace
@@ -70,7 +81,7 @@ namespace JsonTypedefCodeGen::Data {
   }
 
   // ----------------------
-  DLL_PUBLIC JsonValue::JsonValue(std::nullptr_t) {}
+  DLL_PUBLIC JsonValue::JsonValue(std::nullptr_t) : m_value(nullptr) {}
   DLL_PUBLIC JsonValue::JsonValue(const bool b) : m_value(b) {}
   DLL_PUBLIC JsonValue::JsonValue(const double d) : m_value(d) {}
   DLL_PUBLIC JsonValue::JsonValue(const uint64_t u64) : m_value(u64) {}
@@ -173,12 +184,12 @@ namespace JsonTypedefCodeGen::Data {
   }
 
   DLL_PUBLIC bool JsonValue::is_null() const {
-    return AllValuesTypes(m_value.index()) == AllValuesTypes::Null;
+    return m_value.index() == AllValuesTypes::Null;
   }
 
   DLL_PUBLIC std::optional<bool> JsonValue::read_bool() const {
-    if (AllValuesTypes(m_value.index()) == AllValuesTypes::Bool) {
-      return std::get<size_t(AllValuesTypes::Bool)>(m_value);
+    if (m_value.index() == AllValuesTypes::Bool) {
+      return get<AllValuesTypes::Bool>(m_value);
     }
     return {};
   }
@@ -186,11 +197,11 @@ namespace JsonTypedefCodeGen::Data {
   DLL_PUBLIC std::optional<double> JsonValue::read_double() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
-      return std::get<size_t(AllValuesTypes::Double)>(m_value);
+      return get<AllValuesTypes::Double>(m_value);
     case AllValuesTypes::I64:
-      return std::get<size_t(AllValuesTypes::I64)>(m_value);
+      return get<AllValuesTypes::I64>(m_value);
     case AllValuesTypes::U64:
-      return std::get<size_t(AllValuesTypes::U64)>(m_value);
+      return get<AllValuesTypes::U64>(m_value);
     default:
       break;
     }
@@ -200,11 +211,11 @@ namespace JsonTypedefCodeGen::Data {
   DLL_PUBLIC std::optional<uint64_t> JsonValue::read_u64() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
-      return std::get<size_t(AllValuesTypes::Double)>(m_value);
+      return get<AllValuesTypes::Double>(m_value);
     case AllValuesTypes::I64:
-      return std::get<size_t(AllValuesTypes::I64)>(m_value);
+      return get<AllValuesTypes::I64>(m_value);
     case AllValuesTypes::U64:
-      return std::get<size_t(AllValuesTypes::U64)>(m_value);
+      return get<AllValuesTypes::U64>(m_value);
     default:
       break;
     }
@@ -214,11 +225,11 @@ namespace JsonTypedefCodeGen::Data {
   DLL_PUBLIC std::optional<int64_t> JsonValue::read_i64() const {
     switch (AllValuesTypes(m_value.index())) {
     case AllValuesTypes::Double:
-      return std::get<size_t(AllValuesTypes::Double)>(m_value);
+      return get<AllValuesTypes::Double>(m_value);
     case AllValuesTypes::I64:
-      return std::get<size_t(AllValuesTypes::I64)>(m_value);
+      return get<AllValuesTypes::I64>(m_value);
     case AllValuesTypes::U64:
-      return std::get<size_t(AllValuesTypes::U64)>(m_value);
+      return get<AllValuesTypes::U64>(m_value);
     default:
       break;
     }
@@ -226,22 +237,22 @@ namespace JsonTypedefCodeGen::Data {
   }
 
   DLL_PUBLIC std::optional<std::string_view> JsonValue::read_str() const {
-    if (AllValuesTypes(m_value.index()) == AllValuesTypes::String) {
-      return std::get<size_t(AllValuesTypes::String)>(m_value);
+    if (m_value.index() == AllValuesTypes::String) {
+      return get<AllValuesTypes::String>(m_value);
     }
     return {};
   }
 
   DLL_PUBLIC std::optional<JsonArray> JsonValue::read_array() const {
-    if (AllValuesTypes(m_value.index()) == AllValuesTypes::Array) {
-      return JsonArray(std::get<size_t(AllValuesTypes::Array)>(m_value));
+    if (m_value.index() == AllValuesTypes::Array) {
+      return JsonArray(get<AllValuesTypes::Array>(m_value));
     }
     return {};
   }
 
   DLL_PUBLIC std::optional<JsonObject> JsonValue::read_object() const {
-    if (AllValuesTypes(m_value.index()) == AllValuesTypes::Object) {
-      return JsonObject(std::get<size_t(AllValuesTypes::Object)>(m_value));
+    if (m_value.index() == AllValuesTypes::Object) {
+      return JsonObject(get<AllValuesTypes::Object>(m_value));
     }
     return {};
   }

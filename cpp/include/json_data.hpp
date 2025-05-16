@@ -111,7 +111,7 @@ namespace JsonTypedefCodeGen::Data {
                      std::string, Specialization::JsonArrayPtr,
                      Specialization::JsonObjectPtr>;
 
-    AllValues m_value;
+    AllValues m_value{nullptr};
 
   public:
     JsonValue() = default; // null
