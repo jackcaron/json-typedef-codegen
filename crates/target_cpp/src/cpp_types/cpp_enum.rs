@@ -1,6 +1,6 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::ENUM_DECL;
+use crate::cpp_snippets::{ENUM_DECL, ENUM_SER_DECL};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -41,8 +41,8 @@ enum class {} {{
         )
     }
 
-    pub fn prototype(&self) -> String {
-        prototype_name(&self.name)
+    pub fn prototype(&self, cpp_props: &CppProps) -> String {
+        prototype_name(&self.name, cpp_props)
     }
 
     fn create_entry_array(&self) -> String {
@@ -64,7 +64,7 @@ enum class {} {{
         create_entry_array(&items, self.members.len())
     }
 
-    fn create_switch_clauses(&self) -> String {
+    fn create_des_switch_clauses(&self) -> String {
         self.members
             .iter()
             .enumerate()
@@ -78,14 +78,34 @@ enum class {} {{
             .collect()
     }
 
-    pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
-        let clauses = self.create_switch_clauses();
+        let clauses = self.create_des_switch_clauses();
         ENUM_DECL
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$ENUM_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
+    }
+
+    fn create_ser_switch_clauses(&self) -> String {
+        self.members
+            .iter()
+            .map(|m| {
+                format!(
+                    "            case Enum::{}: return \"{}\"sv;\n",
+                    m.name, m.json_value
+                )
+            })
+            .collect()
+    }
+
+    pub fn get_ser_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let clauses = self.create_ser_switch_clauses();
+        ENUM_SER_DECL
+            .replace("$FULL_NAME$", &fullname)
             .replace("$CLAUSES$", &clauses)
     }
 }

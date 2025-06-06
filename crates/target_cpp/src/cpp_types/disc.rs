@@ -84,8 +84,8 @@ impl CppDiscriminator {
             .replace("$TYPE_VALUES$", &enum_items)
     }
 
-    pub fn prototype(&self) -> String {
-        prototype_name(&self.name)
+    pub fn prototype(&self, cpp_props: &CppProps) -> String {
+        prototype_name(&self.name, cpp_props)
     }
 
     fn create_entry_array(&self) -> String {
@@ -122,7 +122,7 @@ impl CppDiscriminator {
             .collect::<String>()
     }
 
-    pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
         let clauses = self.create_switch_clauses(cpp_props);
@@ -179,8 +179,8 @@ impl CppDiscriminatorVariant {
         create_struct_from_fields(&self.name, &self.fields)
     }
 
-    pub fn prototype(&self) -> String {
-        prototype_name(&self.name)
+    pub fn prototype(&self, cpp_props: &CppProps) -> String {
+        prototype_name(&self.name, cpp_props)
     }
 
     fn create_entry_array(&self) -> String {
@@ -204,7 +204,7 @@ impl CppDiscriminatorVariant {
         )
     }
 
-    pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
         let mandatory_indices = create_mandatory_indices(&self.fields, 1);

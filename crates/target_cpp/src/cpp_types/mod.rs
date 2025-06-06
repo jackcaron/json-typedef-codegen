@@ -51,36 +51,60 @@ impl CppTypes {
         }
     }
 
-    pub fn prototype(&self, cpp_state: &CppState, _cpp_props: &CppProps) -> Option<String> {
+    pub fn prototype(&self, cpp_state: &CppState, cpp_props: &CppProps) -> Option<String> {
         match &self {
-            CppTypes::Enum(_enum) => Some(_enum.prototype()),
-            CppTypes::Struct(_struct) => Some(_struct.prototype()),
-            CppTypes::Discriminator(disc) => Some(disc.prototype()),
-            CppTypes::DiscriminatorVariant(vary) => Some(vary.prototype()),
+            CppTypes::Enum(_enum) => Some(_enum.prototype(cpp_props)),
+            CppTypes::Struct(_struct) => Some(_struct.prototype(cpp_props)),
+            CppTypes::Discriminator(disc) => Some(disc.prototype(cpp_props)),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.prototype(cpp_props)),
             CppTypes::Nullable(null) => Some(null.prototype(cpp_state)),
-            CppTypes::Alias(alias) => Some(prototype_name(&alias.get_name())),
+            CppTypes::Alias(alias) => Some(prototype_name(&alias.get_name(), cpp_props)),
             _ => None,
         }
     }
 
-    pub fn define(&self, cpp_state: &CppState, _cpp_props: &CppProps) -> Option<String> {
+    pub fn define(&self, cpp_state: &CppState, cpp_props: &CppProps) -> Option<String> {
         match &self {
-            CppTypes::Enum(_enum) => Some(get_complete_definition(&_enum.get_name())),
-            CppTypes::Struct(_struct) => Some(get_complete_definition(&_struct.get_name())),
-            CppTypes::Discriminator(disc) => Some(get_complete_definition(&disc.get_name())),
-            CppTypes::DiscriminatorVariant(vary) => Some(get_complete_definition(&vary.get_name())),
+            CppTypes::Enum(_enum) => Some(get_complete_definition(&_enum.get_name(), cpp_props)),
+            CppTypes::Struct(_struct) => {
+                Some(get_complete_definition(&_struct.get_name(), cpp_props))
+            }
+            CppTypes::Discriminator(disc) => {
+                Some(get_complete_definition(&disc.get_name(), cpp_props))
+            }
+            CppTypes::DiscriminatorVariant(vary) => {
+                Some(get_complete_definition(&vary.get_name(), cpp_props))
+            }
             CppTypes::Nullable(null) => Some(null.define(cpp_state)),
-            CppTypes::Alias(alias) => Some(get_complete_definition(&alias.get_name())),
+            CppTypes::Alias(alias) => Some(get_complete_definition(&alias.get_name(), cpp_props)),
             _ => None,
         }
     }
 
-    pub fn get_internal_code(&self, _cpp_state: &CppState, cpp_props: &CppProps) -> Option<String> {
+    pub fn get_des_internal_code(
+        &self,
+        _cpp_state: &CppState,
+        cpp_props: &CppProps,
+    ) -> Option<String> {
         match self {
-            CppTypes::Enum(_enum) => Some(_enum.get_internal_code(cpp_props)),
-            CppTypes::Struct(_struct) => Some(_struct.get_internal_code(cpp_props)),
-            CppTypes::Discriminator(disc) => Some(disc.get_internal_code(cpp_props)),
-            CppTypes::DiscriminatorVariant(vary) => Some(vary.get_internal_code(cpp_props)),
+            CppTypes::Enum(_enum) => Some(_enum.get_des_internal_code(cpp_props)),
+            CppTypes::Struct(_struct) => Some(_struct.get_des_internal_code(cpp_props)),
+            CppTypes::Discriminator(disc) => Some(disc.get_des_internal_code(cpp_props)),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.get_des_internal_code(cpp_props)),
+            _ => None,
+        }
+    }
+
+    pub fn get_ser_internal_code(
+        &self,
+        _cpp_state: &CppState,
+        cpp_props: &CppProps,
+    ) -> Option<String> {
+        match self {
+            CppTypes::Enum(_enum) => Some(_enum.get_ser_internal_code(cpp_props)),
+            // CppTypes::Struct(_struct) => Some(_struct.get_ser_internal_code(cpp_props)),
+            // CppTypes::Discriminator(disc) => Some(disc.get_ser_internal_code(cpp_props)),
+            // CppTypes::DiscriminatorVariant(vary) => Some(vary.get_ser_internal_code(cpp_props)),
             _ => None,
         }
     }

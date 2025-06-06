@@ -1,6 +1,7 @@
 use jtd_codegen::target::Field;
 
 use crate::cpp_snippets::ENTRIES_ARRAY;
+use crate::props::CppProps;
 
 pub type TypeIndex = usize;
 
@@ -69,11 +70,11 @@ pub fn create_switch_clauses(fields: &Vec<Field>, offset: usize) -> String {
         .collect::<String>()
 }
 
-pub fn deserialize_name(name: &str) -> String {
+fn deserialize_name(name: &str) -> String {
     format!("deserialize_{}", name)
 }
 
-pub fn function_name(name: &str, full_ns: bool) -> String {
+fn des_function_name(name: &str, full_ns: bool) -> String {
     format!(
         "ExpType<{}> {}(const {}Reader::JsonValue& value)",
         name,
@@ -82,24 +83,62 @@ pub fn function_name(name: &str, full_ns: bool) -> String {
     )
 }
 
-pub fn prototype_name(name: &str) -> String {
+fn serialize_name(name: &str) -> String {
+    format!("serialize_{}", name)
+}
+
+fn ser_function_name(name: &str, full_ns: bool) -> String {
     format!(
-        r#"
-JsonTypedefCodeGen::{};"#,
-        function_name(name, true)
+        "ExpType<void> {}({}Writer::Serializer& serializer, const {}& value)",
+        serialize_name(name),
+        if full_ns { "JsonTypedefCodeGen::" } else { "" },
+        name
     )
 }
 
-pub fn get_complete_definition(name: &str) -> String {
-    format!(
-        r#"
+pub fn prototype_name(name: &str, cpp_props: &CppProps) -> String {
+    let output = cpp_props.get_output();
+    let mut res = String::new();
+    if output.deserialize() {
+        res.push_str(&format!(
+            "\n    JsonTypedefCodeGen::{};",
+            des_function_name(name, true)
+        ));
+    }
+    if output.serialize() {
+        res.push_str(&format!(
+            "\n    JsonTypedefCodeGen::{};",
+            ser_function_name(name, true)
+        ));
+    }
+    res
+}
+
+pub fn get_complete_definition(name: &str, cpp_props: &CppProps) -> String {
+    let output = cpp_props.get_output();
+    let mut res = String::new();
+    if output.deserialize() {
+        res.push_str(&format!(
+            r#"
 {} {{
   return JsonTypedefCodeGen::Deserialize::Json<{}>::deserialize(value);
 }}
 "#,
-        function_name(name, false),
-        name
-    )
+            des_function_name(name, true),
+            name
+        ));
+    }
+    if output.serialize() {
+        res.push_str(&format!(
+            r#"
+{} {{
+  return JsonTypedefCodeGen::Serialize::serialize(serializer, value);
+}}
+"#,
+            ser_function_name(name, true)
+        ));
+    }
+    res
 }
 
 pub fn create_visited_array(sz: usize) -> String {

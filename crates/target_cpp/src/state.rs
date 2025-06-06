@@ -63,15 +63,49 @@ impl CppState {
     }
 
     pub fn write_internal_code(&self, cpp_props: &CppProps) -> String {
-        let type_internal_code = self
-            .cpp_types
-            .iter()
-            .filter_map(|t| t.get_internal_code(&self, cpp_props))
-            .collect::<String>();
+        let output = cpp_props.get_output();
+        let mut res = INTERNAL_CODE_HEADER.to_string();
 
-        INTERNAL_CODE_HEADER.to_string()
-            + &type_internal_code
-            + "\n} // namespace JsonTypedefCodeGen::Deserialize\n"
+        // TODO: common values like the "entries" arrays??
+        // hide them in an anonymous namespace?
+        // hide the whole inner code in an anonymous namespace??
+
+        if output.deserialize() {
+            let type_internal_code = self
+                .cpp_types
+                .iter()
+                .filter_map(|t| t.get_des_internal_code(&self, cpp_props))
+                .collect::<String>();
+            if !type_internal_code.is_empty() {
+                res.push_str(&format!(
+                    r#"
+namespace JsonTypedefCodeGen::Deserialize {{
+  {}
+}} // namespace JsonTypedefCodeGen::Deserialize
+"#,
+                    type_internal_code
+                ));
+            }
+        }
+        if output.serialize() {
+            let type_internal_code = self
+                .cpp_types
+                .iter()
+                .filter_map(|t| t.get_ser_internal_code(&self, cpp_props))
+                .collect::<String>();
+            if !type_internal_code.is_empty() {
+                res.push_str(&format!(
+                    r#"
+namespace JsonTypedefCodeGen::Serialize {{
+  {}
+
+}} // namespace JsonTypedefCodeGen::Serialize
+"#,
+                    type_internal_code
+                ));
+            }
+        }
+        res
     }
 
     pub fn write_forward_declarations(&self) -> String {

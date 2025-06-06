@@ -36,8 +36,8 @@ impl CppStruct {
         create_struct_from_fields(&self.name, &self.fields)
     }
 
-    pub fn prototype(&self) -> String {
-        prototype_name(&self.name)
+    pub fn prototype(&self, cpp_props: &CppProps) -> String {
+        prototype_name(&self.name, cpp_props)
     }
 
     fn create_entry_array(&self) -> String {
@@ -59,7 +59,7 @@ impl CppStruct {
         create_entry_array(&items, self.fields.len())
     }
 
-    pub fn get_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
         let mandatory_indices = create_mandatory_indices(&self.fields, 0);

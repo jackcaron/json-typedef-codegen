@@ -93,6 +93,32 @@ impl JsonCodeGenInclude {
     }
 }
 
+#[derive(Default, Deserialize, Clone, Copy)]
+pub enum Output {
+    #[serde(rename = "deserialize")]
+    Deserialize,
+    #[serde(rename = "serialize")]
+    Serialize,
+    #[default]
+    #[serde(rename = "both")]
+    Both,
+}
+
+impl Output {
+    pub fn deserialize(&self) -> bool {
+        match self {
+            Output::Deserialize | Output::Both => true,
+            Output::Serialize => false,
+        }
+    }
+    pub fn serialize(&self) -> bool {
+        match self {
+            Output::Deserialize => false,
+            Output::Serialize | Output::Both => true,
+        }
+    }
+}
+
 #[derive(Default, Deserialize)]
 pub struct CppProps {
     #[serde(rename = "guard")]
@@ -108,6 +134,10 @@ pub struct CppProps {
     include_reader: JsonCodeGenInclude,
     #[serde(rename = "include_data", default)]
     include_data: JsonCodeGenInclude,
+    #[serde(rename = "include_writer", default)]
+    include_writer: JsonCodeGenInclude,
+
+    output: Output,
     // include found header files needed?
     // implement destructors
     // provide copy (with constructor/assignment) or "clone" function
@@ -116,6 +146,10 @@ pub struct CppProps {
 }
 
 impl CppProps {
+    pub fn get_output(&self) -> Output {
+        self.output
+    }
+
     pub fn get_guard(&self) -> String {
         match &self.guard {
             Some(head) => head.get_guard(),
@@ -152,12 +186,25 @@ impl CppProps {
     }
 
     pub fn get_codegen_includes(&self) -> String {
-        self.include_data.get_header_file("json_data.hpp")
-            + &self.include_reader.get_header_file("json_reader.hpp")
+        let mut res = self.include_data.get_header_file("json_data.hpp");
+        if self.output.deserialize() {
+            res.push_str(&self.include_reader.get_header_file("json_reader.hpp"));
+        }
+        if self.output.serialize() {
+            res.push_str(&self.include_writer.get_header_file("json_writer.hpp"));
+        }
+        res
     }
 
     pub fn get_codegen_src_includes(&self) -> String {
-        self.include_data.get_header_file("deserialize.hpp")
+        let mut res = String::new();
+        if self.output.deserialize() {
+            res.push_str(&self.include_data.get_header_file("deserialize.hpp"));
+        }
+        if self.output.serialize() {
+            res.push_str(&self.include_data.get_header_file("serialize.hpp"));
+        }
+        res
     }
 
     pub fn from_file(filename: Option<&str>) -> anyhow::Result<CppProps> {
