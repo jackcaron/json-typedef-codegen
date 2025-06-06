@@ -219,7 +219,7 @@ if (BUILD_TEST)
         ARGS "-p" "${GEN_DIR}"
         COMMAND ${JTD_BIN}
         ARGS "${schm}" "--cpp-out" "${GEN_DIR}" "--cpp-props" "${CFG_FILE}"
-        DEPENDS ${schm} ${JTD_BIN}
+        DEPENDS ${schm} ${JTD_BIN} ${CFG_FILE}
       )
 
       list(APPEND SCHM_HEADERS ${EXP_FILE_HPP})
