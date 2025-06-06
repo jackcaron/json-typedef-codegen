@@ -212,13 +212,6 @@ namespace JsonTypedefCodeGen::Deserialize {
     }
   };
 
-#ifdef __JTD_USE_UNORDERED_MAP
-  template <typename Type>
-  using JsonMap = std::unordered_map<std::string, Type>;
-#else
-  template <typename Type> using JsonMap = std::map<std::string, Type>;
-#endif
-
   template <typename Type> struct Json<JsonMap<Type>> {
     template <typename JValue>
     static ExpType<JsonMap<Type>> deserialize(const JValue& value) {

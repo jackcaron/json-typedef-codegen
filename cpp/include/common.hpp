@@ -5,6 +5,12 @@
 #include <string>
 #include <string_view>
 
+#ifdef __JTD_USE_UNORDERED_MAP
+#include <unordered_map>
+#else
+#include <map>
+#endif
+
 namespace JsonTypedefCodeGen {
 
   enum class NumberType {
@@ -72,6 +78,13 @@ namespace JsonTypedefCodeGen {
                                            const std::string& message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
+
+#ifdef __JTD_USE_UNORDERED_MAP
+  template <typename Type>
+  using JsonMap = std::unordered_map<std::string, Type>;
+#else
+  template <typename Type> using JsonMap = std::map<std::string, Type>;
+#endif
 
   // Expected Utils
   template <typename ResType>
