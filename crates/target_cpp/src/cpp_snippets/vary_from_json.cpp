@@ -3,7 +3,6 @@
   struct Json<$FULL_NAME$> {
     using Vary = $FULL_NAME$;
     static constexpr std::string_view vary_name = "$VARY_NAME$"sv;
-    $ENTRIES$
     $MANDATORY$
 
     static ExpType<Vary> deserialize(const Data::JsonObject& value) {
@@ -14,7 +13,7 @@
         value,
         [&](const std::string_view key, const auto val) {
           return flatten_expected(
-            get_value_index(key, entries, vary_name)
+            get_value_index(key, Common<Vary>::entries, vary_name)
             .transform([&](int idx) -> ExpType<void> {
                 if (visited[idx]) {
                   return Errors::duplicated_key(key);
@@ -30,7 +29,7 @@
 
       return chain_void_expected(
         feach,
-        visited_mandatory(mandatory_indices, visited, entries, vary_name)
+        visited_mandatory(mandatory_indices, visited, Common<Vary>::entries, vary_name)
       ).transform([&result]() { return std::move(result); });
     }
   };

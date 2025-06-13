@@ -10,7 +10,8 @@ public:
   };
 
   constexpr $DISCRIMINATOR_NAME$() = default;
-  template<typename U> constexpr $DISCRIMINATOR_NAME$(U& t): m_value(t) {}
+  template<typename U>
+  explicit constexpr $DISCRIMINATOR_NAME$(U& t): m_value(t) {}
 
   template<typename U> constexpr $DISCRIMINATOR_NAME$& operator=(U& t) {
     m_value = t;

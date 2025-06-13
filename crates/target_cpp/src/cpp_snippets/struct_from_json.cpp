@@ -3,7 +3,6 @@
   struct Json<$FULL_NAME$> {
     using Struct = $FULL_NAME$;
     static constexpr std::string_view st_name = "$STRUCT_NAME$"sv;
-    $ENTRIES$
     $MANDATORY$
 
     template<typename JValue>
@@ -15,7 +14,7 @@
         value,
         [&](const auto key, const auto &val) {
           return flatten_expected(
-            get_value_index(key, entries, st_name)
+            get_value_index(key, Common<Struct>::entries, st_name)
             .transform([&](const int idx) -> ExpType<void> {
               if (visited[idx]) {
                 return Errors::duplicated_key(key);
@@ -30,7 +29,7 @@
 
       return chain_void_expected(
         feach,
-        visited_mandatory(mandatory_indices, visited, entries, st_name)
+        visited_mandatory(mandatory_indices, visited, Common<Struct>::entries, st_name)
       ).transform([&result]() { return std::move(result); });
     }
   };

@@ -3,14 +3,13 @@
   struct Json<$FULL_NAME$> {
     using Disc = $FULL_NAME$;
     static constexpr std::string_view discName = "$DISC_NAME$"sv;
-    $ENTRIES$
 
     static ExpType<int> get_disc_index(const Data::JsonObject& object) {
       auto exp_disc = get_disc_value(object, "$TAG_KEY$"sv, discName);
 
       return flatten_expected(
           exp_disc.transform([](const std::string_view disc) {
-            return get_value_index(disc, entries, discName);
+            return get_value_index(disc, Common<Disc>::entries, discName);
           }));
     }
 
