@@ -101,13 +101,13 @@ pub fn prototype_name(name: &str, cpp_props: &CppProps) -> String {
     let mut res = String::new();
     if output.deserialize() {
         res.push_str(&format!(
-            "\n    JsonTypedefCodeGen::{};",
+            "\nJsonTypedefCodeGen::{};",
             des_function_name(name, true)
         ));
     }
     if output.serialize() {
         res.push_str(&format!(
-            "\n    JsonTypedefCodeGen::{};",
+            "\nJsonTypedefCodeGen::{};",
             ser_function_name(name, true)
         ));
     }

@@ -1,6 +1,6 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::INTERNAL_CODE_STRUCT;
+use crate::cpp_snippets::{INTERNAL_CODE_STRUCT, INTERNAL_CODE_STRUCT_SER};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -59,18 +59,57 @@ impl CppStruct {
         create_entry_array(&items, self.fields.len())
     }
 
-    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_common_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
+
+        format!(
+            r#"
+  template<> struct Common<{}> {{
+    {}
+  }};
+"#,
+            fullname, entries
+        )
+    }
+
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
         let mandatory_indices = create_mandatory_indices(&self.fields, 0);
         let visited = create_visited_array(self.fields.len());
         let clauses = create_switch_clauses(&self.fields, 0);
         INTERNAL_CODE_STRUCT
             .replace("$FULL_NAME$", &fullname)
-            .replace("$ENTRIES$", &entries)
             .replace("$MANDATORY$", &mandatory_indices)
             .replace("$VISITED$", &visited)
             .replace("$STRUCT_NAME$", &self.name)
             .replace("$CLAUSES$", &clauses)
+    }
+
+    fn get_ser_write_props(&self) -> String {
+        self.fields
+            .iter()
+            .map(|f| {
+                if f.optional {
+                    format!(
+                        "    if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, *value.{}); }}\n",
+                        f.name, f.json_name, f.name
+                    )
+                } else {
+                    format!(
+                        "    SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
+                        f.json_name, f.name
+                    )
+                }
+            })
+            .collect::<String>()
+    }
+
+    pub fn get_ser_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let write_props = self.get_ser_write_props();
+        INTERNAL_CODE_STRUCT_SER
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$WRITE_PROPS$", &write_props)
     }
 }

@@ -1,6 +1,9 @@
 use jtd_codegen::target;
 
-use crate::cpp_snippets::{DESC_DECL, INTERNAL_CODE_DISC, INTERNAL_CODE_VARY};
+use crate::cpp_snippets::{
+    DESC_DECL, INTERNAL_CODE_DISC, INTERNAL_CODE_DISC_SER, INTERNAL_CODE_VARY,
+    INTERNAL_CODE_VARY_SER,
+};
 use crate::cpp_types::shared::*;
 use crate::props::CppProps;
 
@@ -107,7 +110,7 @@ impl CppDiscriminator {
         create_entry_array(&items, self.variants.len())
     }
 
-    fn create_switch_clauses(&self, cpp_props: &CppProps) -> String {
+    fn create_des_clauses(&self, cpp_props: &CppProps) -> String {
         self.variants
             .iter()
             .enumerate()
@@ -122,15 +125,53 @@ impl CppDiscriminator {
             .collect::<String>()
     }
 
+    pub fn get_common_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let entries = self.create_entry_array();
+
+        format!(
+            r#"
+  template<> struct Common<{}> {{
+    {}
+  }};
+"#,
+            fullname, entries
+        )
+    }
+
     pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
-        let clauses = self.create_switch_clauses(cpp_props);
+        let clauses = self.create_des_clauses(cpp_props);
         INTERNAL_CODE_DISC
             .replace("$FULL_NAME$", &fullname)
             .replace("$ENTRIES$", &entries)
             .replace("$TAG_KEY$", &self.tag_json_name)
             .replace("$DISC_NAME$", &self.name)
+            .replace("$CLAUSES$", &clauses)
+    }
+
+    fn get_ser_clauses(&self) -> String {
+        let cut = self.name.len();
+        self.variants
+            .iter()
+            .map(|v| {
+                let tname = &v.type_name[cut..];
+                format!(
+                    r#"    case Types::{}:
+      SHORT_EXP(serialize(serializer, *value.get<Types::{}>()));\n"#,
+                    tname, tname
+                )
+            })
+            .collect::<String>()
+    }
+
+    pub fn get_ser_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let clauses = self.get_ser_clauses();
+        INTERNAL_CODE_DISC_SER
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$TAG_KEY$", &self.tag_json_name)
             .replace("$CLAUSES$", &clauses)
     }
 }
@@ -204,18 +245,57 @@ impl CppDiscriminatorVariant {
         )
     }
 
-    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
+    pub fn get_common_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
+
+        format!(
+            r#"
+  template<> struct Common<{}> {{
+    {}
+  }};
+"#,
+            fullname, entries
+        )
+    }
+
+    pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
         let mandatory_indices = create_mandatory_indices(&self.fields, 1);
         let visited = create_visited_array(self.fields.len() + 1);
         let clauses = create_switch_clauses(&self.fields, 1);
         INTERNAL_CODE_VARY
             .replace("$FULL_NAME$", &fullname)
-            .replace("$ENTRIES$", &entries)
             .replace("$MANDATORY$", &mandatory_indices)
             .replace("$VISITED$", &visited)
             .replace("$VARY_NAME$", &self.name)
             .replace("$CLAUSES$", &clauses)
+    }
+
+    fn get_ser_write_props(&self) -> String {
+        self.fields
+            .iter()
+            .map(|f| {
+                if f.optional {
+                    format!(
+                        "    if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, *value.{}); }}\n",
+                        f.name, f.json_name, f.name
+                    )
+                } else {
+                    format!(
+                        "    SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
+                        f.json_name, f.name
+                    )
+                }
+            })
+            .collect::<String>()
+    }
+
+    pub fn get_ser_internal_code(&self, cpp_props: &CppProps) -> String {
+        let fullname = cpp_props.get_namespaced_name(&self.name);
+        let write_props = self.get_ser_write_props();
+        INTERNAL_CODE_VARY_SER
+            .replace("$FULL_NAME$", &fullname)
+            .replace("$WRITE_PROPS$", &write_props)
     }
 }

@@ -47,7 +47,13 @@ impl CppState {
     }
 
     pub fn write_src_include_files(&self, cpp_props: &CppProps) -> String {
-        "#define IMPL_DESERIALIZE\n".to_string()
+        let prefix = if cpp_props.get_output().deserialize() {
+            "#define IMPL_DESERIALIZE\n"
+        } else {
+            ""
+        };
+
+        prefix.to_string()
             + &cpp_props.get_codegen_src_includes()
             + &(self
                 .src_include_files
@@ -70,6 +76,26 @@ impl CppState {
         // hide them in an anonymous namespace?
         // hide the whole inner code in an anonymous namespace??
 
+        {
+            let type_internal_code = self
+                .cpp_types
+                .iter()
+                .filter_map(|t| t.get_common_internal_code(&self, cpp_props))
+                .collect::<String>();
+            if !type_internal_code.is_empty() {
+                res.push_str(&format!(
+                    r#"
+namespace /*anonymous*/ {{
+
+  template<typename Type> struct Common;
+  {}
+}} // namespace /*anonymous*/
+"#,
+                    type_internal_code
+                ));
+            }
+        }
+
         if output.deserialize() {
             let type_internal_code = self
                 .cpp_types
@@ -80,7 +106,7 @@ impl CppState {
                 res.push_str(&format!(
                     r#"
 namespace JsonTypedefCodeGen::Deserialize {{
-  {}
+{}
 }} // namespace JsonTypedefCodeGen::Deserialize
 "#,
                     type_internal_code
@@ -97,8 +123,7 @@ namespace JsonTypedefCodeGen::Deserialize {{
                 res.push_str(&format!(
                     r#"
 namespace JsonTypedefCodeGen::Serialize {{
-  {}
-
+{}
 }} // namespace JsonTypedefCodeGen::Serialize
 "#,
                     type_internal_code

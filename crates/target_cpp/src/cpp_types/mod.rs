@@ -81,6 +81,20 @@ impl CppTypes {
         }
     }
 
+    pub fn get_common_internal_code(
+        &self,
+        _cpp_state: &CppState,
+        cpp_props: &CppProps,
+    ) -> Option<String> {
+        match self {
+            CppTypes::Enum(_enum) => Some(_enum.get_common_internal_code(cpp_props)),
+            CppTypes::Struct(_struct) => Some(_struct.get_common_internal_code(cpp_props)),
+            CppTypes::Discriminator(disc) => Some(disc.get_common_internal_code(cpp_props)),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.get_common_internal_code(cpp_props)),
+            _ => None,
+        }
+    }
+
     pub fn get_des_internal_code(
         &self,
         _cpp_state: &CppState,
@@ -102,9 +116,9 @@ impl CppTypes {
     ) -> Option<String> {
         match self {
             CppTypes::Enum(_enum) => Some(_enum.get_ser_internal_code(cpp_props)),
-            // CppTypes::Struct(_struct) => Some(_struct.get_ser_internal_code(cpp_props)),
-            // CppTypes::Discriminator(disc) => Some(disc.get_ser_internal_code(cpp_props)),
-            // CppTypes::DiscriminatorVariant(vary) => Some(vary.get_ser_internal_code(cpp_props)),
+            CppTypes::Struct(_struct) => Some(_struct.get_ser_internal_code(cpp_props)),
+            CppTypes::Discriminator(disc) => Some(disc.get_ser_internal_code(cpp_props)),
+            CppTypes::DiscriminatorVariant(vary) => Some(vary.get_ser_internal_code(cpp_props)),
             _ => None,
         }
     }
