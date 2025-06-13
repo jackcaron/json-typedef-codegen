@@ -4,7 +4,6 @@
 #include "json_writer.hpp"
 
 #include <memory>
-#include <span>
 
 // utility functions for the serialized generated code
 
@@ -93,7 +92,7 @@ namespace JsonTypedefCodeGen::Serialize {
 
   template <typename Type>
   ExpType<void> serialize(JWt::Serializer& serializer,
-                          const std::span<Type> values) {
+                          const std::vector<Type>& values) {
     //
     SHORT_EXP(serializer.start_array());
     for (const auto& item : values) {

@@ -254,7 +254,7 @@ namespace JsonTypedefCodeGen::Reader {
 
     case JsonTypes::Array: {
       if (auto tmp = read_array(); tmp.has_value()) {
-        return tmp.value().clone();
+        return tmp.value().clone().transform(conv);
       } else {
         return std::unexpected(tmp.error());
       }
@@ -262,7 +262,7 @@ namespace JsonTypedefCodeGen::Reader {
 
     case JsonTypes::Object: {
       if (auto tmp = read_object(); tmp.has_value()) {
-        return tmp.value().clone();
+        return tmp.value().clone().transform(conv);
       } else {
         return std::unexpected(tmp.error());
       }

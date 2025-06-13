@@ -116,18 +116,18 @@ namespace JsonTypedefCodeGen::Data {
     JsonValue() = default; // null
     JsonValue(const JsonValue&) = default;
     JsonValue(JsonValue&&) = default;
-    JsonValue(std::nullptr_t);
-    JsonValue(const bool b);
-    JsonValue(const double d);
-    JsonValue(const uint64_t u64);
-    JsonValue(const int64_t i64);
-    JsonValue(const std::string_view str);
-    JsonValue(const std::string& str);
-    JsonValue(const JsonArray& array);
-    JsonValue(const JsonObject& object);
-    JsonValue(std::string&& str);
-    JsonValue(JsonArray&& array);
-    JsonValue(JsonObject&& object);
+    explicit JsonValue(std::nullptr_t);
+    explicit JsonValue(const bool b);
+    explicit JsonValue(const double d);
+    explicit JsonValue(const uint64_t u64);
+    explicit JsonValue(const int64_t i64);
+    explicit JsonValue(const std::string_view str);
+    explicit JsonValue(const std::string& str);
+    explicit JsonValue(const JsonArray& array);
+    explicit JsonValue(const JsonObject& object);
+    explicit JsonValue(std::string&& str);
+    explicit JsonValue(JsonArray&& array);
+    explicit JsonValue(JsonObject&& object);
     ~JsonValue();
 
     JsonValue& operator=(const JsonValue&) = default;
