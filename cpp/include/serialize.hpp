@@ -1,5 +1,7 @@
 #pragma once
 
+#ifdef IMPL_SERIALIZE
+
 #include "json_data.hpp"
 #include "json_writer.hpp"
 
@@ -125,3 +127,5 @@ namespace JsonTypedefCodeGen::Serialize {
 #undef SHORT_EXP
 
 } // namespace JsonTypedefCodeGen::Serialize
+
+#endif
