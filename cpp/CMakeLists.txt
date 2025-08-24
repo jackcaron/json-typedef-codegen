@@ -155,6 +155,9 @@ endif()
 # writer library options
 if (BUILD_WRITER)
 
+  file(GLOB STRWRITERSRC "src/string_writer/*.cpp" "src/string_writer/*.hpp")
+  set(CPPSRC ${CPPSRC} ${STRWRITERSRC})
+
   if (ENABLE_NLOH_JSON)
     add_definitions(-DUSE_OUT_NLOH)
     file(GLOB NLOHJSONSRC "src/nlohmann_writer/*.cpp" "src/nlohmann_writer/*.hpp")
