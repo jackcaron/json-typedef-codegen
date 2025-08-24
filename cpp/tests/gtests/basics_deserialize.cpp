@@ -80,7 +80,7 @@ namespace {
 
 } // namespace
 
-TEST(BASIC, enum_ok) {
+TEST(BASIC_DES, enum_ok) {
   {
     auto exp_be = get_exp_basic_enum(R"( [] )"_padded);
     EXPECT_FALSE(exp_be.has_value());
@@ -103,7 +103,7 @@ TEST(BASIC, enum_ok) {
   }
 }
 
-TEST(BASIC, enum_err) {
+TEST(BASIC_DES, enum_err) {
   {
     auto exp_be = get_exp_basic_enum(R"( ["Gary"] )"_padded);
     EXPECT_FALSE(exp_be.has_value());
@@ -113,7 +113,7 @@ TEST(BASIC, enum_err) {
   }
 }
 
-TEST(BASIC, struct_ok) {
+TEST(BASIC_DES, struct_ok) {
   {
     auto exp_bs = get_exp_basic_struct(
         R"( {
@@ -148,7 +148,7 @@ TEST(BASIC, struct_ok) {
   }
 }
 
-TEST(BASIC, struct_err) {
+TEST(BASIC_DES, struct_err) {
   // missing mandatory field "baz"
   {
     auto exp_bs = get_exp_basic_struct(
@@ -187,7 +187,7 @@ TEST(BASIC, struct_err) {
   }
 }
 
-TEST(BASIC, discriminator_ok) {
+TEST(BASIC_DES, discriminator_ok) {
   using Types = test::BasicDisc::Types;
   {
     auto exp_bd = get_exp_basic_disc(
@@ -245,7 +245,7 @@ TEST(BASIC, discriminator_ok) {
   }
 }
 
-TEST(BASIC, discriminator_err) {
+TEST(BASIC_DES, discriminator_err) {
   using Types = test::BasicDisc::Types;
   // invalid "Type"
   {
@@ -289,7 +289,7 @@ TEST(BASIC, discriminator_err) {
   }
 }
 
-TEST(BASIC, primitives_ok) {
+TEST(BASIC_DES, primitives_ok) {
   {
     auto exp_prim = get_exp_prims(
         R"( {
@@ -309,7 +309,7 @@ TEST(BASIC, primitives_ok) {
   }
 }
 
-TEST(BASIC, primitives_limits) {
+TEST(BASIC_DES, primitives_limits) {
   {
     auto exp_prim = get_exp_prims(
         R"( {
