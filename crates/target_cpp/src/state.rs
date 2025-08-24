@@ -47,10 +47,10 @@ impl CppState {
     }
 
     pub fn write_src_include_files(&self, cpp_props: &CppProps) -> String {
-        let prefix = if cpp_props.get_output().deserialize() {
-            "#define IMPL_DESERIALIZE\n"
-        } else {
-            ""
+        let prefix = match cpp_props.get_output() {
+            crate::props::Output::Deserialize => "#define IMPL_DESERIALIZE\n",
+            crate::props::Output::Serialize => "#define IMPL_SERIALIZE\n",
+            crate::props::Output::Both => "#define IMPL_DESERIALIZE\n#define IMPL_SERIALIZE\n",
         };
 
         prefix.to_string()

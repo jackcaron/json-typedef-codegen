@@ -159,7 +159,9 @@ impl CppDiscriminator {
                 let tname = &v.type_name[cut..];
                 format!(
                     r#"    case Types::{}:
-      SHORT_EXP(serialize(serializer, *value.get<Types::{}>()));\n"#,
+      SHORT_EXP(serialize(serializer, *value.get<Types::{}>()));
+      break;
+"#,
                     tname, tname
                 )
             })

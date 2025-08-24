@@ -67,11 +67,11 @@ impl Dictionary {
 
 #[derive(Default, Deserialize)]
 enum JsonCodeGenInclude {
-    #[default]
     #[serde(rename = "ignore")]
     Ignore,
     #[serde(rename = "local")]
     Local,
+    #[default]
     #[serde(rename = "system")]
     System,
     #[serde(rename = "path")]
