@@ -1,6 +1,6 @@
 #include "serializer.hpp"
 
-#include "../../include/string_serializer.hpp"
+#include "../../include/stream_serializer.hpp"
 #include "../internal.hpp"
 
 #include <format>
@@ -10,91 +10,84 @@ using namespace std::string_view_literals;
 using namespace JsonTypedefCodeGen::Writer::Specialization;
 
 // -------------------------------------------
-InternalStringSerializer::~InternalStringSerializer() {}
+InternalStreamSerializer::~InternalStreamSerializer() {}
 
-ExpType<void> InternalStringSerializer::close() { return m_str_ser->close(); }
+ExpType<void> InternalStreamSerializer::close() { return m_str_ser->close(); }
 
-ExpType<void> InternalStringSerializer::write_null() {
+ExpType<void> InternalStreamSerializer::write_null() {
   return m_str_ser->write_null();
 }
-ExpType<void> InternalStringSerializer::write_bool(const bool b) {
+ExpType<void> InternalStreamSerializer::write_bool(const bool b) {
   return m_str_ser->write_bool(b);
 }
-ExpType<void> InternalStringSerializer::write_double(const double d) {
+ExpType<void> InternalStreamSerializer::write_double(const double d) {
   return m_str_ser->write_double(d);
 }
-ExpType<void> InternalStringSerializer::write_i64(const int64_t i) {
+ExpType<void> InternalStreamSerializer::write_i64(const int64_t i) {
   return m_str_ser->write_i64(i);
 }
-ExpType<void> InternalStringSerializer::write_u64(const uint64_t u) {
+ExpType<void> InternalStreamSerializer::write_u64(const uint64_t u) {
   return m_str_ser->write_u64(u);
 }
-ExpType<void> InternalStringSerializer::write_str(const std::string_view str) {
+ExpType<void> InternalStreamSerializer::write_str(const std::string_view str) {
   return m_str_ser->write_str(str);
 }
 
-ExpType<void> InternalStringSerializer::start_object() {
+ExpType<void> InternalStreamSerializer::start_object() {
   return m_str_ser->start_object();
 }
-ExpType<void> InternalStringSerializer::write_key(const std::string_view key) {
+ExpType<void> InternalStreamSerializer::write_key(const std::string_view key) {
   return m_str_ser->write_key(key);
 }
-ExpType<void> InternalStringSerializer::end_object() {
+ExpType<void> InternalStreamSerializer::end_object() {
   return m_str_ser->end_object();
 }
 
-ExpType<void> InternalStringSerializer::start_array() {
+ExpType<void> InternalStreamSerializer::start_array() {
   return m_str_ser->start_array();
 }
-ExpType<void> InternalStringSerializer::end_array() {
+ExpType<void> InternalStreamSerializer::end_array() {
   return m_str_ser->end_array();
 }
 
-Serializer InternalStringSerializer::create(StringSerializer& str_ser) {
-  return create_serializer(std::make_unique<InternalStringSerializer>(str_ser));
+Serializer InternalStreamSerializer::create(StreamSerializer& str_ser) {
+  return create_serializer(std::make_unique<InternalStreamSerializer>(str_ser));
 }
 
 // -------------------------------------------
 // -------------------------------------------
 namespace JsonTypedefCodeGen::Writer {
 
-  StringSerializer::StringSerializer(const StringSerializerCreateInfo& info)
-      : m_pretty(info.pretty), //
-        m_indent(info.depth),  //
+  StreamSerializer::StreamSerializer(const StreamSerializerCreateInfo& info)
+      : m_os(info.output_stream), //
+        m_pretty(info.pretty),    //
+        m_indent(info.depth),     //
         m_indent_str(info.indent) {
     m_status.emplace(Status{.is_array = info.start_as_array,
                             .is_first_item = true,
                             .last_item_is_a_key = false});
-    m_ss << (info.start_as_array ? "["sv : "{"sv);
+    (*m_os) << (info.start_as_array ? "["sv : "{"sv);
   }
 
-  void StringSerializer::write_indent() {
+  void StreamSerializer::write_indent() {
     if (m_pretty) {
-      m_ss << "\n"sv;
+      (*m_os) << "\n"sv;
       for (int i = 0; i < m_indent; ++i) {
-        m_ss << m_indent_str;
+        (*m_os) << m_indent_str;
       }
     }
   }
 
-  void StringSerializer::end_item() {
+  void StreamSerializer::end_item() {
     if (top().is_first_item) {
       top().is_first_item = false;
     } else {
-      m_ss << ","sv;
+      (*m_os) << ","sv;
       write_indent();
     }
   }
 
-  DLL_PUBLIC ExpType<std::string> StringSerializer::to_string() const {
-    if (m_closed) {
-      return m_ss.str();
-    }
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "string serializer not closed"sv);
-  }
-
-  DLL_PUBLIC ExpType<void> StringSerializer::close() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::close() {
     if (m_closed) {
       return make_json_error(JsonErrorTypes::Invalid,
                              "string serializer already closed"sv);
@@ -102,7 +95,7 @@ namespace JsonTypedefCodeGen::Writer {
     m_closed = true;
     --m_indent;
     write_indent();
-    m_ss << (top().is_array ? "]"sv : "}"sv);
+    (*m_os) << (top().is_array ? "]"sv : "}"sv);
     return ExpType<void>();
   }
 
@@ -124,49 +117,55 @@ namespace JsonTypedefCodeGen::Writer {
     end_item();                                                                \
   }
 
-  DLL_PUBLIC ExpType<void> StringSerializer::write_null() {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << "null"sv;
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_null() {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << "null"sv;
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::write_bool(const bool b) {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << (b ? "true"sv : "false"sv);
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_bool(const bool b) {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << (b ? "true"sv : "false"sv);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::write_double(const double d) {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << std::format("{}", d);
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_double(const double d) {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << std::format("{}", d);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::write_i64(const int64_t i) {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << std::format("{}", i);
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_i64(const int64_t i) {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << std::format("{}", i);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::write_u64(const uint64_t u) {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << std::format("{}", u);
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_u64(const uint64_t u) {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << std::format("{}", u);
     return ExpType<void>();
   }
   DLL_PUBLIC ExpType<void>
-  StringSerializer::write_str(const std::string_view str) {
-    CHECK_CLOSED
-    CHECK_KEY
-    m_ss << std::format("\"{}\"", str);
+  StreamSerializer::write_str(const std::string_view str) {
+    CHECK_CLOSED;
+    CHECK_KEY;
+
+    (*m_os) << std::format("\"{}\"", str);
     return ExpType<void>();
   }
 
-  DLL_PUBLIC ExpType<void> StringSerializer::start_object() {
-    CHECK_CLOSED
-    CHECK_KEY
+  DLL_PUBLIC ExpType<void> StreamSerializer::start_object() {
+    CHECK_CLOSED;
+    CHECK_KEY;
 
-    m_ss << "{"sv;
+    (*m_os) << "{"sv;
     ++m_indent;
     write_indent();
     m_status.emplace(Status{
@@ -175,8 +174,8 @@ namespace JsonTypedefCodeGen::Writer {
     return ExpType<void>();
   }
   DLL_PUBLIC ExpType<void>
-  StringSerializer::write_key(const std::string_view key) {
-    CHECK_CLOSED
+  StreamSerializer::write_key(const std::string_view key) {
+    CHECK_CLOSED;
 
     if (top().is_array) {
       return make_json_error(JsonErrorTypes::Invalid,
@@ -189,11 +188,12 @@ namespace JsonTypedefCodeGen::Writer {
 
     end_item();
     top().last_item_is_a_key = true;
-    m_ss << std::format("\"{}\": ", key);
+
+    (*m_os) << std::format("\"{}\": ", key);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::end_object() {
-    CHECK_CLOSED
+  DLL_PUBLIC ExpType<void> StreamSerializer::end_object() {
+    CHECK_CLOSED;
     if (top().is_array) {
       return make_json_error(JsonErrorTypes::Invalid,
                              "cannot end an array as an object"sv);
@@ -203,7 +203,7 @@ namespace JsonTypedefCodeGen::Writer {
     }
     --m_indent;
     write_indent();
-    m_ss << "}";
+    (*m_os) << "}";
     m_status.pop();
     if (m_status.empty()) {
       return make_json_error(JsonErrorTypes::Invalid, "empty root item"sv);
@@ -211,11 +211,11 @@ namespace JsonTypedefCodeGen::Writer {
     return ExpType<void>();
   }
 
-  DLL_PUBLIC ExpType<void> StringSerializer::start_array() {
-    CHECK_CLOSED
-    CHECK_KEY
+  DLL_PUBLIC ExpType<void> StreamSerializer::start_array() {
+    CHECK_CLOSED;
+    CHECK_KEY;
 
-    m_ss << "["sv;
+    (*m_os) << "["sv;
     ++m_indent;
     write_indent();
     m_status.emplace(Status{
@@ -223,15 +223,15 @@ namespace JsonTypedefCodeGen::Writer {
 
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StringSerializer::end_array() {
-    CHECK_CLOSED
+  DLL_PUBLIC ExpType<void> StreamSerializer::end_array() {
+    CHECK_CLOSED;
     if (!top().is_array) {
       return make_json_error(JsonErrorTypes::Invalid,
                              "cannot end an object as an array"sv);
     }
     --m_indent;
     write_indent();
-    m_ss << "]";
+    (*m_os) << "]";
     m_status.pop();
     if (m_status.empty()) {
       return make_json_error(JsonErrorTypes::Invalid, "empty root item"sv);
@@ -242,21 +242,27 @@ namespace JsonTypedefCodeGen::Writer {
 #undef CHECK_KEY
 #undef CHECK_CLOSED
 
-  DLL_PUBLIC StringSerializer
-  StringSerializer::create(const StringSerializerCreateInfo& info) {
-    StringSerializerCreateInfo copy = info;
+  DLL_PUBLIC ExpType<StreamSerializer>
+  StreamSerializer::create(const StreamSerializerCreateInfo& info) {
+    if (info.output_stream == nullptr) {
+      return make_json_error(
+          JsonErrorTypes::InOut,
+          "missing output stream in StreamSerializerCreateInfo"sv);
+    }
+
+    StreamSerializerCreateInfo copy = info;
     if (copy.pretty && copy.indent.empty()) {
       copy.indent = "  "sv;
     }
     if (copy.depth < 1) {
       copy.depth = 1;
     }
-    return StringSerializer(copy);
+    return StreamSerializer(copy);
   }
 
   DLL_PUBLIC ExpType<Serializer>
-  to_string_serializer(StringSerializer& str_serial) {
-    return InternalStringSerializer::create(str_serial);
+  to_string_serializer(StreamSerializer& str_serial) {
+    return InternalStreamSerializer::create(str_serial);
   }
 
 } // namespace JsonTypedefCodeGen::Writer

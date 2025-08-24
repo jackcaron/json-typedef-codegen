@@ -7,14 +7,16 @@
 
 namespace JsonTypedefCodeGen::Writer {
 
-  struct StringSerializerCreateInfo {
+  struct StreamSerializerCreateInfo {
     bool pretty = false;
     bool start_as_array = false;
     int depth = 1;
     std::string_view indent; // empty, it's set to "  "
+
+    std::ostream* output_stream = nullptr;
   };
 
-  class StringSerializer {
+  class StreamSerializer {
   private:
     struct Status {
       bool is_array;
@@ -22,7 +24,7 @@ namespace JsonTypedefCodeGen::Writer {
       bool last_item_is_a_key;
     };
 
-    std::stringstream m_ss;
+    std::ostream* m_os = nullptr;
     std::stack<Status> m_status;
 
     int m_indent = 1;
@@ -35,13 +37,10 @@ namespace JsonTypedefCodeGen::Writer {
     void write_indent();
     void end_item();
 
-    StringSerializer(const StringSerializerCreateInfo& info);
+    StreamSerializer(const StreamSerializerCreateInfo& info);
 
   public:
-    StringSerializer() = delete;
-
-    // must "close" the string serializer to access the final result
-    ExpType<std::string> to_string() const;
+    StreamSerializer() = delete;
 
     ExpType<void> close();
 
@@ -59,12 +58,13 @@ namespace JsonTypedefCodeGen::Writer {
     ExpType<void> start_array();
     ExpType<void> end_array();
 
-    static StringSerializer create(const StringSerializerCreateInfo& info);
+    static ExpType<StreamSerializer>
+    create(const StreamSerializerCreateInfo& info);
   };
 
   /**
-   * The StringSerializer must exists longer than the Serializer
+   * The StreamSerializer must exists longer than the Serializer
    */
-  ExpType<Serializer> to_string_serializer(StringSerializer& str_serial);
+  ExpType<Serializer> to_string_serializer(StreamSerializer& str_serial);
 
 } // namespace JsonTypedefCodeGen::Writer

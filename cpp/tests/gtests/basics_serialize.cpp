@@ -4,10 +4,11 @@
 #include "generated/basic_struct.hpp"
 #include "generated/primitives.hpp"
 
-#include "string_serializer.hpp"
+#include "stream_serializer.hpp"
 
 #include <functional>
 #include <gtest/gtest.h>
+#include <sstream>
 
 using namespace JsonTypedefCodeGen;
 using namespace std::string_view_literals;
@@ -18,7 +19,7 @@ namespace {
 
   using OpFunc = std::function<ExpType<void>(JW::Serializer&)>;
 
-  ExpType<void> execute_raw(JW::StringSerializer& str_ser, OpFunc f) {
+  ExpType<void> execute_raw(JW::StreamSerializer& str_ser, OpFunc f) {
     if (auto exp_ser = JW::to_string_serializer(str_ser); exp_ser.has_value()) {
       if (auto exp_ok = f(exp_ser.value()); exp_ok.has_value()) {
         return str_ser.close();
@@ -30,30 +31,21 @@ namespace {
     }
   }
 
-  JW::StringSerializer create_array_string_ser() {
-    JW::StringSerializerCreateInfo info;
+  auto create_array_string_ser(std::ostream* os) {
+    JW::StreamSerializerCreateInfo info;
     info.start_as_array = true;
-    return JW::StringSerializer::create(info);
+    info.output_stream = os;
+    return JW::StreamSerializer::create(info);
   }
 
   ExpType<std::string> execute_as_array(OpFunc f) {
-    auto str_ser = create_array_string_ser();
-    if (auto exp_ok = execute_raw(str_ser, f); exp_ok.has_value()) {
-      return str_ser.to_string();
-    } else {
-      return UnexpJsonError(exp_ok.error());
-    }
-  }
-
-  JW::StringSerializer create_object_string_ser() {
-    JW::StringSerializerCreateInfo info;
-    return JW::StringSerializer::create(info);
-  }
-
-  ExpType<std::string> execute_as_object(OpFunc f) {
-    auto str_ser = create_array_string_ser();
-    if (auto exp_ok = execute_raw(str_ser, f); exp_ok.has_value()) {
-      return str_ser.to_string();
+    std::stringstream ss;
+    if (auto exp_str_ser = create_array_string_ser(&ss);
+        !exp_str_ser.has_value()) {
+      return UnexpJsonError(exp_str_ser.error());
+    } else if (auto exp_ok = execute_raw(exp_str_ser.value(), f);
+               exp_ok.has_value()) {
+      return ss.str();
     } else {
       return UnexpJsonError(exp_ok.error());
     }

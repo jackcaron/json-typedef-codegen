@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../../include/string_serializer.hpp"
+#include "../../include/stream_serializer.hpp"
 #include "../spec_writer.hpp"
 
 #include <stack>
@@ -8,14 +8,14 @@
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Writer;
 
-class InternalStringSerializer final : public Specialization::AbsSerializer {
+class InternalStreamSerializer final : public Specialization::AbsSerializer {
 private:
-  StringSerializer* m_str_ser = nullptr;
+  StreamSerializer* m_str_ser = nullptr;
 
 public:
-  InternalStringSerializer() = delete;
-  InternalStringSerializer(StringSerializer& str_ser) : m_str_ser(&str_ser) {}
-  ~InternalStringSerializer();
+  InternalStreamSerializer() = delete;
+  InternalStreamSerializer(StreamSerializer& str_ser) : m_str_ser(&str_ser) {}
+  ~InternalStreamSerializer();
 
   virtual ExpType<void> close() override;
 
@@ -33,5 +33,5 @@ public:
   virtual ExpType<void> start_array() override;
   virtual ExpType<void> end_array() override;
 
-  static Serializer create(StringSerializer& str_ser);
+  static Serializer create(StreamSerializer& str_ser);
 };
