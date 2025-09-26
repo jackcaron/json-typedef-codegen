@@ -92,12 +92,12 @@ impl CppStruct {
             .map(|f| {
                 if f.optional {
                     format!(
-                        "    if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, *value.{}); }}\n",
+                        "      if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, value.{}); }}\n",
                         f.name, f.json_name, f.name
                     )
                 } else {
                     format!(
-                        "    SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
+                        "      SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
                         f.json_name, f.name
                     )
                 }

@@ -1,4 +1,5 @@
 use crate::cpp_types::shared::*;
+use crate::props::CppProps;
 use crate::state::CppState;
 
 #[derive(Debug, PartialEq)]
@@ -50,24 +51,13 @@ impl CppNullable {
         cpp_state.get_aliased_name(&uptr_name).to_string()
     }
 
-    pub fn prototype(&self, cpp_state: &CppState) -> String {
+    pub fn prototype(&self, cpp_props: &CppProps, cpp_state: &CppState) -> String {
         let full_name = self.get_full_name(cpp_state);
-        format!(
-            r#"
-JsonTypedefCodeGen::ExpType<{}> deserialize_Nullable{}(const JsonTypedefCodeGen::Reader::JsonValue& value);"#,
-            full_name, full_name
-        )
+        prototype_name(&full_name, cpp_props)
     }
 
-    pub fn define(&self, cpp_state: &CppState) -> String {
+    pub fn define(&self, cpp_props: &CppProps, cpp_state: &CppState) -> String {
         let full_name = self.get_full_name(cpp_state);
-        format!(
-            r#"
-ExpType<{}> deserialize_Nullable{}(const Reader::JsonValue& value) {{
-  return JsonTypedefCodeGen::Deserialize::Json<{}>::deserialize(value);
-}}
-"#,
-            full_name, full_name, full_name
-        )
+        get_complete_definition(&full_name, cpp_props)
     }
 }

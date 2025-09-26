@@ -132,10 +132,11 @@ pub fn get_complete_definition(name: &str, cpp_props: &CppProps) -> String {
         res.push_str(&format!(
             r#"
 {} {{
-  return JsonTypedefCodeGen::Serialize::serialize(serializer, value);
+  return JsonTypedefCodeGen::Serialize::Serialize<{}>::serialize(serializer, value);
 }}
 "#,
-            ser_function_name(name, true)
+            ser_function_name(name, true),
+            name
         ));
     }
     res

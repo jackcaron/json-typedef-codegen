@@ -57,7 +57,7 @@ impl CppTypes {
             CppTypes::Struct(_struct) => Some(_struct.prototype(cpp_props)),
             CppTypes::Discriminator(disc) => Some(disc.prototype(cpp_props)),
             CppTypes::DiscriminatorVariant(vary) => Some(vary.prototype(cpp_props)),
-            CppTypes::Nullable(null) => Some(null.prototype(cpp_state)),
+            CppTypes::Nullable(null) => Some(null.prototype(cpp_props, cpp_state)),
             CppTypes::Alias(alias) => Some(prototype_name(&alias.get_name(), cpp_props)),
             _ => None,
         }
@@ -75,7 +75,7 @@ impl CppTypes {
             CppTypes::DiscriminatorVariant(vary) => {
                 Some(get_complete_definition(&vary.get_name(), cpp_props))
             }
-            CppTypes::Nullable(null) => Some(null.define(cpp_state)),
+            CppTypes::Nullable(null) => Some(null.define(cpp_props, cpp_state)),
             CppTypes::Alias(alias) => Some(get_complete_definition(&alias.get_name(), cpp_props)),
             _ => None,
         }

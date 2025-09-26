@@ -151,18 +151,21 @@ impl CppDiscriminator {
             .replace("$CLAUSES$", &clauses)
     }
 
-    fn get_ser_clauses(&self) -> String {
+    fn get_ser_clauses(&self, cpp_props: &CppProps) -> String {
         let cut = self.name.len();
         self.variants
             .iter()
             .map(|v| {
                 let tname = &v.type_name[cut..];
+                let ns_type_name = cpp_props.get_namespaced_name(&v.type_name);
                 format!(
-                    r#"    case Types::{}:
-      SHORT_EXP(serialize(serializer, *value.get<Types::{}>()));
-      break;
+                    r#"      case Types::{}:
+            {{
+              SHORT_EXP(Serialize<{}>::serialize(serializer, *value.get<Types::{}>()));
+              break;
+            }}
 "#,
-                    tname, tname
+                    tname, ns_type_name, tname
                 )
             })
             .collect::<String>()
@@ -170,7 +173,7 @@ impl CppDiscriminator {
 
     pub fn get_ser_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
-        let clauses = self.get_ser_clauses();
+        let clauses = self.get_ser_clauses(cpp_props);
         INTERNAL_CODE_DISC_SER
             .replace("$FULL_NAME$", &fullname)
             .replace("$TAG_KEY$", &self.tag_json_name)
@@ -280,8 +283,12 @@ impl CppDiscriminatorVariant {
             .map(|f| {
                 if f.optional {
                     format!(
-                        "    if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, *value.{}); }}\n",
-                        f.name, f.json_name, f.name
+                        r#"    if (value.{}) {{
+      auto& tmp = *value.{};
+      SHORT_KEY_VAL("{}"sv, tmp);
+    }}
+"#,
+                        f.name, f.name, f.json_name
                     )
                 } else {
                     format!(
