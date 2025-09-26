@@ -38,8 +38,7 @@ namespace {
           return make_json_error(JsonErrorTypes::Invalid);
         }));
 
-    return flatten_expected(
-        exp_enum.transform(test::deserialize_NullableNullableEnum));
+    return flatten_expected(exp_enum.transform(test::deserialize_NullableEnum));
   }
 
   ExpNullableStruct get_exp_null_struct(const padded_str& json_str) {
@@ -61,7 +60,7 @@ namespace {
         }));
 
     return flatten_expected(
-        exp_struct.transform(test::deserialize_NullableNullableStruct));
+        exp_struct.transform(test::deserialize_NullableStruct));
   }
 
   ExpOptProps get_exp_opt_props(const padded_str& json_str) {

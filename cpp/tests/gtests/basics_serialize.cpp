@@ -20,7 +20,7 @@ namespace {
   using OpFunc = std::function<ExpType<void>(JW::Serializer&)>;
 
   ExpType<void> execute_raw(JW::StreamSerializer& str_ser, OpFunc f) {
-    if (auto exp_ser = JW::to_string_serializer(str_ser); exp_ser.has_value()) {
+    if (auto exp_ser = JW::to_stream_serializer(str_ser); exp_ser.has_value()) {
       if (auto exp_ok = f(exp_ser.value()); exp_ok.has_value()) {
         return str_ser.close();
       } else {
@@ -34,6 +34,7 @@ namespace {
   auto create_array_string_ser(std::ostream* os) {
     JW::StreamSerializerCreateInfo info;
     info.start_as_array = true;
+    info.open_root_item = false;
     info.output_stream = os;
     return JW::StreamSerializer::create(info);
   }
@@ -53,13 +54,27 @@ namespace {
 
 } // namespace
 
+TEST(BASIC_SER, invalid_stream_serializer) {
+  JW::StreamSerializerCreateInfo info;
+  auto exp_err = JW::StreamSerializer::create(info);
+
+  EXPECT_FALSE(exp_err.has_value());
+}
+
+TEST(BASIC_SER, cannot_write_key_in_array) {
+  auto exp_err = execute_as_array([](auto& serializer) {
+    return serializer.write_key("Bob"sv);
+  });
+  EXPECT_FALSE(exp_err.has_value());
+}
+
 TEST(BASIC_SER, enum_ok) {
   auto exp_str = execute_as_array([](auto& serializer) {
     return test::serialize_BasicEnum(serializer, test::BasicEnum::Bar);
   });
 
   EXPECT_TRUE(exp_str.has_value());
-  EXPECT_EQ(exp_str.value(), "[\"Bar\"]"sv);
+  EXPECT_EQ(exp_str.value(), "\"Bar\""sv);
 }
 
 TEST(BASIC_SER, struct_ok) {
@@ -70,5 +85,5 @@ TEST(BASIC_SER, struct_ok) {
 
   EXPECT_TRUE(exp_str.has_value());
   EXPECT_EQ(exp_str.value(),
-            "[{\"bar\": \"Bob\",\"baz\": [true,false],\"foo\": true}]"sv);
+            "{\"bar\": \"Bob\",\"baz\": [true,false],\"foo\": true}"sv);
 }
