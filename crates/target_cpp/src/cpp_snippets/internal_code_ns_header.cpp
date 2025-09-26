@@ -8,4 +8,4 @@ using namespace std::string_view_literals;
 
 #define SHORT_KEY_VAL(key, val)                                                \
   SHORT_EXP(serializer.write_key((key)));                                      \
-  SHORT_EXP(serialize(serializer, (val)));
+  SHORT_EXP(Serialize<decltype(val)>::serialize(serializer, (val)));
