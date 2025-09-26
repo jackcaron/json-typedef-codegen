@@ -7,7 +7,15 @@
         "/home/widgg/.nvm/versions/node/v22.11.0/lib/node_modules/node-addon-api/**",
         "/home/widgg/.nvm/versions/node/v22.11.0/include/node/**"
       ],
-      "defines": ["USE_SIMD", "USE_IN_NAPI", "USE_IN_NLOH"],
+      "defines": [
+        "USE_SIMD",
+        "USE_IN_NAPI",
+        "USE_IN_NLOH",
+        "USE_OUT_NLOH",
+        "USE_OUT_NAPI",
+        "IMPL_DESERIALIZE",
+        "IMPL_SERIALIZE"
+      ],
       "compilerPath": "/usr/bin/gcc-13",
       "cStandard": "c23",
       "cppStandard": "c++23",
