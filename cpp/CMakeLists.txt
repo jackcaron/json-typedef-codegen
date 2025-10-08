@@ -231,9 +231,10 @@ if (BUILD_TEST)
 
     find_package(GTest)
     file(GLOB_RECURSE TESTSRC "tests/gtests/*.cpp")
+    file(GLOB_RECURSE TESTHPP "tests/gtests/*.hpp")
 
     # add test options based on the build options
-    add_executable(json_wrapper_tests ${TESTSRC} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
+    add_executable(json_wrapper_tests ${TESTSRC} ${TESTHPP} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
   endif()
 endif()
