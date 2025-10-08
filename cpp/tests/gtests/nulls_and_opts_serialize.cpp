@@ -41,7 +41,7 @@ TEST(NULL_AND_OPT_SER, null_struct) {
             .bar = "Bob", .baz = {false, true}, .foo = true});
         return test::serialize_NullableStruct(serializer, ve);
       },
-      "{\"bar\": \"Bob\",\"baz\": [false,true],\"foo\": true}"sv);
+      "{\"bar\":\"Bob\",\"baz\":[false,true],\"foo\":true}"sv);
 }
 
 TEST(NULL_AND_OPT_SER, opt_props_struct) {
@@ -50,7 +50,7 @@ TEST(NULL_AND_OPT_SER, opt_props_struct) {
         test::OptionalProps props;
         return test::serialize_OptionalProps(serializer, props);
       },
-      "{\"Message\": \"\",\"TrueFalse\": true}"sv);
+      "{\"Message\":\"\",\"TrueFalse\":true}"sv);
 
   serialize_and_expected_json(
       [](auto& serializer) {
@@ -58,7 +58,7 @@ TEST(NULL_AND_OPT_SER, opt_props_struct) {
         props.baz = std::make_unique<bool>(false);
         return test::serialize_OptionalProps(serializer, props);
       },
-      "{\"Message\": \"\",\"TrueFalse\": true,\"baz\": false}"sv);
+      "{\"Message\":\"\",\"TrueFalse\":true,\"baz\":false}"sv);
 
   serialize_and_expected_json(
       [](auto& serializer) {
@@ -66,5 +66,5 @@ TEST(NULL_AND_OPT_SER, opt_props_struct) {
         props.foo = std::make_unique<std::string>("bob"sv);
         return test::serialize_OptionalProps(serializer, props);
       },
-      "{\"Message\": \"\",\"TrueFalse\": true,\"foo\": \"bob\"}"sv);
+      "{\"Message\":\"\",\"TrueFalse\":true,\"foo\":\"bob\"}"sv);
 }

@@ -194,7 +194,7 @@ namespace JsonTypedefCodeGen::Writer {
     end_item();
     top().last_item_is_a_key = true;
 
-    (*m_os) << std::format("\"{}\": "sv, key);
+    (*m_os) << std::format("\"{}\":"sv, key);
     return ExpType<void>();
   }
   DLL_PUBLIC ExpType<void> StreamSerializer::end_object() {

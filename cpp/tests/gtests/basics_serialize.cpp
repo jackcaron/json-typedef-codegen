@@ -116,7 +116,7 @@ TEST(BASIC_SER, struct_ok) {
             .bar = "Bob", .baz = {true, false}, .foo = true};
         return test::serialize_BasicStruct(serializer, basic);
       },
-      "{\"bar\": \"Bob\",\"baz\": [true,false],\"foo\": true}"sv);
+      "{\"bar\":\"Bob\",\"baz\":[true,false],\"foo\":true}"sv);
 }
 
 TEST(BASIC_SER, disc_ok) {
@@ -126,7 +126,7 @@ TEST(BASIC_SER, disc_ok) {
         test::BasicDisc disc(bdbool);
         return test::serialize_BasicDisc(serializer, disc);
       },
-      "{\"Type\": \"Boolean\",\"quuz\": false}"sv);
+      "{\"Type\":\"Boolean\",\"quuz\":false}"sv);
 
   serialize_and_expected_json(
       [](auto& serializer) {
@@ -134,5 +134,5 @@ TEST(BASIC_SER, disc_ok) {
         test::BasicDisc disc(bdstr);
         return test::serialize_BasicDisc(serializer, disc);
       },
-      "{\"Type\": \"String\",\"baz\": \"Bob\"}"sv);
+      "{\"Type\":\"String\",\"baz\":\"Bob\"}"sv);
 }

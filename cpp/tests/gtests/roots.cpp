@@ -66,13 +66,13 @@ TEST(ROOT, empty) {
     EXPECT_TRUE(intern_array.empty());
   }
   {
-    auto exp_empty = get_exp_empty(R"( [1,2] )"_padded);
-    EXPECT_TRUE(exp_empty.has_value());
+    auto exp_non_empty = get_exp_empty(R"( [1,2] )"_padded);
+    EXPECT_TRUE(exp_non_empty.has_value());
 
-    auto empty = std::move(exp_empty.value());
-    EXPECT_EQ(empty.get_type(), JsonTypes::Array);
+    auto non_empty = std::move(exp_non_empty.value());
+    EXPECT_EQ(non_empty.get_type(), JsonTypes::Array);
 
-    auto exp_array = empty.read_array();
+    auto exp_array = non_empty.read_array();
     EXPECT_TRUE(exp_array.has_value());
 
     auto intern_array = exp_array.value().internal();
@@ -93,13 +93,13 @@ TEST(ROOT, empty) {
     EXPECT_TRUE(intern_obj.empty());
   }
   {
-    auto exp_empty = get_exp_empty(R"( {"a":1} )"_padded);
-    EXPECT_TRUE(exp_empty.has_value());
+    auto exp_non_empty = get_exp_empty(R"( {"a":1} )"_padded);
+    EXPECT_TRUE(exp_non_empty.has_value());
 
-    auto empty = std::move(exp_empty.value());
-    EXPECT_EQ(empty.get_type(), JsonTypes::Object);
+    auto non_empty = std::move(exp_non_empty.value());
+    EXPECT_EQ(non_empty.get_type(), JsonTypes::Object);
 
-    auto exp_obj = empty.read_object();
+    auto exp_obj = non_empty.read_object();
     EXPECT_TRUE(exp_obj.has_value());
 
     auto intern_obj = exp_obj.value().internal();
