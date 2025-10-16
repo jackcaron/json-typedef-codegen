@@ -4,8 +4,7 @@
       "name": "Linux",
       "includePath": [
         "${workspaceFolder}/cpp/**",
-        "/home/widgg/.nvm/versions/node/v22.11.0/lib/node_modules/node-addon-api/**",
-        "/home/widgg/.nvm/versions/node/v22.11.0/include/node/**"
+        "${workspaceFolder}/cpp/node_modules/node-addon-api/**"
       ],
       "defines": [
         "USE_SIMD",
