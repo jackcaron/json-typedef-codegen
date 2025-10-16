@@ -31,14 +31,6 @@ if (ENABLE_SIMD_JSON AND (NOT BUILD_READER))
   message(FATAL_ERROR "SIMD JSON wrapper can only be built if reader wrappers are built")
 endif()
 
-if (BUILD_READER)
-  #
-endif()
-
-if (BUILD_WRITER)
-  #
-endif()
-
 # C/C++
 set(CMAKE_C_COMPILER "gcc-13")
 set(CMAKE_CXX_COMPILER "g++-13")
@@ -97,7 +89,7 @@ endif()
 # find files
 include_directories("${CMAKE_SOURCE_DIR}/include")
 file(GLOB_RECURSE INC_HPP "include/*.hpp")
-file(GLOB CPPSRC "src/*.cpp" "src/*.hpp")
+file(GLOB CPPSRC "src/*.cpp" "src/*.hpp" "src/stream_writer/*.cpp" "src/stream_writer/*.hpp")
 
 if (ENABLE_NLOH_JSON)
   set(NLOH_JSON_DIR "${EXT_LIB_NLOH_JSON_PATH}/nlohmann")
@@ -154,9 +146,6 @@ endif()
 
 # writer library options
 if (BUILD_WRITER)
-
-  file(GLOB STRWRITERSRC "src/stream_writer/*.cpp" "src/stream_writer/*.hpp")
-  set(CPPSRC ${CPPSRC} ${STRWRITERSRC})
 
   if (ENABLE_NLOH_JSON)
     add_definitions(-DUSE_OUT_NLOH)

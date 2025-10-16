@@ -48,6 +48,7 @@ TEST(NULL_AND_OPT_SER, opt_props_struct) {
   serialize_and_expected_json(
       [](auto& serializer) {
         test::OptionalProps props;
+        props.true_false = true;
         return test::serialize_OptionalProps(serializer, props);
       },
       "{\"Message\":\"\",\"TrueFalse\":true}"sv);
@@ -55,16 +56,18 @@ TEST(NULL_AND_OPT_SER, opt_props_struct) {
   serialize_and_expected_json(
       [](auto& serializer) {
         test::OptionalProps props;
+        props.true_false = false;
         props.baz = std::make_unique<bool>(false);
         return test::serialize_OptionalProps(serializer, props);
       },
-      "{\"Message\":\"\",\"TrueFalse\":true,\"baz\":false}"sv);
+      "{\"Message\":\"\",\"TrueFalse\":false,\"baz\":false}"sv);
 
   serialize_and_expected_json(
       [](auto& serializer) {
         test::OptionalProps props;
+        props.true_false = false;
         props.foo = std::make_unique<std::string>("bob"sv);
         return test::serialize_OptionalProps(serializer, props);
       },
-      "{\"Message\":\"\",\"TrueFalse\":true,\"foo\":\"bob\"}"sv);
+      "{\"Message\":\"\",\"TrueFalse\":false,\"foo\":\"bob\"}"sv);
 }
