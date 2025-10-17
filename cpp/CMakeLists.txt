@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(json-wrapper-lib LANGUAGES CXX VERSION 0.0.1)
+set(VERSION_MAJOR 0)
+set(VERSION_MINOR 0)
+set(VERSION_PATCH 1)
+set(VERSION "${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}")
+
+project(json-wrapper-lib LANGUAGES CXX)
 
 # options
 option(ENABLE_SIMD_JSON "add SIMD JSON wrapper" OFF)
@@ -163,24 +168,33 @@ endif()
 
 # static/shared library
 add_library(json_wrapper_obj OBJECT ${INC_HPP} ${CPPSRC})
-add_library(json_wrapper_static STATIC $<TARGET_OBJECTS:json_wrapper_obj>)
-if (NOT ENABLE_NAPI)
+if (ENABLE_NAPI)
+  add_library(json_wrapper_napi_static STATIC $<TARGET_OBJECTS:json_wrapper_obj>)
+else()
+  add_library(json_wrapper_static STATIC $<TARGET_OBJECTS:json_wrapper_obj>)
   add_library(json_wrapper SHARED $<TARGET_OBJECTS:json_wrapper_obj>)
+  set_target_properties(
+    json_wrapper PROPERTIES
+    VERSION "${VERSION}"
+    SOVERSION "${VERSION_MAJOR}")
 endif()
 
 # tests
 if (BUILD_TEST)
+
   if (ENABLE_NAPI)
     if (CMAKE_JS_VERSION)
       file(GLOB_RECURSE TESTSRC "tests/napi_tests/*.cpp" "tests/napi_tests/*.hpp")
 
       add_library(json_wrapper_tests SHARED ${TESTSRC} ${INC_HPP})
       set_target_properties(json_wrapper_tests PROPERTIES PREFIX "" SUFFIX ".node")
-      target_link_libraries(json_wrapper_tests json_wrapper_static)
+      target_link_libraries(json_wrapper_tests json_wrapper_napi_static)
     else()
       message(FATAL_ERROR "need cmake-js to build the NAPI tests")
     endif()
+
   else() #else  ENABLE_NAPI
+
     # look for jtd-codegen binary
     get_filename_component(TARGET_BASE "${CMAKE_SOURCE_DIR}/../target" REALPATH)
     set(JTD_BIN "${TARGET_BASE}/release/jtd-codegen")
@@ -226,4 +240,5 @@ if (BUILD_TEST)
     add_executable(json_wrapper_tests ${TESTSRC} ${TESTHPP} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
   endif()
+
 endif()

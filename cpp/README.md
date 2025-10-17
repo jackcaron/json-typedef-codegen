@@ -34,6 +34,8 @@ Extra options:
 - `-DBUILD_TEST=Off` to disable the tests
 - `-DBUILD_READER=Off` to disable the deserializer
 
+Built libraries are located in `lib/<CMAKE_BUILD_TYPE>`.
+
 ### Node.js NAPI wrapper
 
 In the `cpp` directory:
@@ -43,6 +45,10 @@ npm install
 npm run build-writer
 ```
 
-Use script `build` to only include the deserializer part.
-The script `test` to run some quick tests.
-The suffix `-dev` is there to build in debug mode.
+This creates the static library `libjson_wrapper_napi_static.a`.
+
+Extra scripts/options:
+
+- `build` to only include the deserializer part.
+- `test` to run some quick tests.
+- `-dev` is there to build in debug mode.
