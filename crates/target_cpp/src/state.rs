@@ -208,7 +208,7 @@ namespace JsonTypedefCodeGen::Serialize {{
     pub fn parse_primitive(
         &mut self,
         expr: target::Expr,
-        props: &CppProps,
+        _props: &CppProps,
         meta: Metadata,
     ) -> String {
         match expr {
@@ -242,13 +242,13 @@ namespace JsonTypedefCodeGen::Serialize {{
                 }
             }
             target::Expr::DictOf(sub_type) => {
-                let (file, name) = props.get_dictionary_info(&sub_type);
-                match self.cpp_type_indices.get(&name) {
+                let name = format!("JsonTypedefCodeGen::JsonMap<{}>", sub_type);
+                match self.cpp_type_indices.get(&sub_type) {
                     Some(_) => name,
                     None => {
                         self.add_src_include_file("<format>");
                         self.add_include_file("<string>");
-                        self.add_include_file(file);
+                        self.add_include_file("<map>");
 
                         let opt_sub = if sub_type.is_empty() {
                             None

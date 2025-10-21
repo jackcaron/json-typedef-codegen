@@ -29,42 +29,6 @@ impl Guard {
     }
 }
 
-#[derive(Deserialize, Default)]
-enum Dictionary {
-    #[serde(rename = "unordered")]
-    Unordered,
-    #[default]
-    #[serde(rename = "ordered")]
-    Ordered,
-}
-
-impl Dictionary {
-    fn get_include_file(&self) -> &'static str {
-        match self {
-            Dictionary::Unordered => "<unordered_map>",
-            Dictionary::Ordered => "<map>",
-        }
-    }
-    fn get_container(&self) -> &'static str {
-        match self {
-            Dictionary::Unordered => "std::unordered_map",
-            Dictionary::Ordered => "std::map",
-        }
-    }
-    fn get_include_file_set(&self) -> &'static str {
-        match self {
-            Dictionary::Unordered => "<unordered_set>",
-            Dictionary::Ordered => "<set>",
-        }
-    }
-    fn get_container_set(&self) -> &'static str {
-        match self {
-            Dictionary::Unordered => "std::unordered_set",
-            Dictionary::Ordered => "std::set",
-        }
-    }
-}
-
 #[derive(Default, Deserialize)]
 enum JsonCodeGenInclude {
     #[serde(rename = "ignore")]
@@ -126,9 +90,6 @@ pub struct CppProps {
 
     #[serde(rename = "namespace")]
     namespace: Option<String>,
-
-    #[serde(rename = "dictionary_type", default)]
-    dictionary_type: Dictionary,
 
     #[serde(rename = "include_reader", default)]
     include_reader: JsonCodeGenInclude,
@@ -219,42 +180,19 @@ impl CppProps {
             None => Ok(CppProps::default()),
         }
     }
-
-    pub fn get_dictionary_info(&self, sub_type: &str) -> (&'static str, String) {
-        let dic = &self.dictionary_type;
-        if sub_type.is_empty() {
-            (
-                dic.get_include_file_set(),
-                format!("{}<std::string>", dic.get_container_set()),
-            )
-        } else {
-            (
-                dic.get_include_file(),
-                format!("{}<std::string, {}>", dic.get_container(), sub_type),
-            )
-        }
-    }
 }
 
 // ------
 #[cfg(test)]
 mod tests {
-    use crate::props::{CppProps, Dictionary, Guard, JsonCodeGenInclude};
+    use crate::props::{CppProps,Guard, JsonCodeGenInclude};
 
     #[test]
     fn default() {
         let props = CppProps::default();
         assert_eq!(props.guard.is_none(), true);
         assert_eq!(props.namespace.is_none(), true);
-        assert_eq!(matches!(props.dictionary_type, Dictionary::Ordered), true);
-        assert_eq!(
-            matches!(props.include_data, JsonCodeGenInclude::Ignore),
-            true
-        );
-        assert_eq!(
-            matches!(props.include_reader, JsonCodeGenInclude::Ignore),
-            true
-        );
+        // Removed the test for Dictionary
     }
 
     #[test]
@@ -294,15 +232,6 @@ mod tests {
             },
             true
         );
-        assert_eq!(props.namespace.is_none(), true);
-    }
-
-    #[test]
-    fn uses_ordered_map() {
-        let json = r#"{"dictionary_type":"ordered"}"#;
-
-        let props: CppProps = serde_json::from_str(json).unwrap();
-        assert_eq!(matches!(props.dictionary_type, Dictionary::Ordered), true);
         assert_eq!(props.namespace.is_none(), true);
     }
 
