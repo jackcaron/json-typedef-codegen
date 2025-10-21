@@ -23,7 +23,7 @@ fn get_mandatory_indices(fields: &Vec<Field>, idx_offset: usize) -> Vec<usize> {
 }
 
 pub fn create_mandatory_indices(fields: &Vec<Field>, idx_offset: usize) -> String {
-    let midx: Vec<usize> = get_mandatory_indices(fields, idx_offset);
+    let midx = get_mandatory_indices(fields, idx_offset);
 
     let str_midx = midx
         .iter()

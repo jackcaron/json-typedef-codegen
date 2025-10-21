@@ -315,7 +315,7 @@ namespace JsonTypedefCodeGen::Serialize {{
 
     pub fn parse_struct(&mut self, name: &str, fields: Vec<target::Field>, meta: Metadata) {
         self.set_root_type(&name);
-        let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
+        let cpp_type_indices = self.field_to_type_indices(&fields);
         self.toggle_value_index_code();
         let cpp_type = CppTypes::Struct(CppStruct::new(&name, fields, cpp_type_indices));
         self.add_or_replace_cpp_type(name, cpp_type, meta);
@@ -330,10 +330,10 @@ namespace JsonTypedefCodeGen::Serialize {{
         meta: Metadata,
     ) {
         self.set_root_type(name);
-        let cpp_type_indices: Vec<usize> = variants
+        let cpp_type_indices = variants
             .iter()
             .map(|v| self.add_incomplete(&v.type_name).1)
-            .collect();
+            .collect::<Vec<usize>>();
         let cpp_type = CppTypes::Discriminator(CppDiscriminator::new(
             name,
             variants,
@@ -355,7 +355,7 @@ namespace JsonTypedefCodeGen::Serialize {{
         parent_name: &str,
         meta: Metadata,
     ) {
-        let cpp_type_indices: Vec<usize> = self.field_to_type_indices(&fields);
+        let cpp_type_indices = self.field_to_type_indices(&fields);
         let cpp_type = CppTypes::DiscriminatorVariant(CppDiscriminatorVariant::new(
             name,
             fields,
@@ -395,7 +395,7 @@ namespace JsonTypedefCodeGen::Serialize {{
     }
 
     fn replace_incomplete(&mut self, idx: usize, cpp_type: CppTypes, meta: Metadata) {
-        let curr: &CppTypes = &self.cpp_types[idx];
+        let curr = &self.cpp_types[idx];
         if (*curr) != cpp_type {
             match curr {
                 CppTypes::Incomplete => {
