@@ -52,3 +52,7 @@ Extra scripts/options:
 - `build` to only include the deserializer part.
 - `test` to run some quick tests.
 - `-dev` is there to build in debug mode.
+
+## Future Work
+
+- [ ] Modules

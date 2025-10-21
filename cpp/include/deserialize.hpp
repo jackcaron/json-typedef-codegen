@@ -221,14 +221,14 @@ namespace JsonTypedefCodeGen::Deserialize {
             if (auto exp_res = Json<Type>::deserialize(val);
                 exp_res.has_value()) {
 
-              if (result.insert({std::string(key), std::move(exp_res.value())})
+              if (result.emplace(std::string(key), std::move(exp_res.value()))
                       .second) {
                 return ExpType<void>();
               } else {
                 return Errors::duplicated_key(key);
               }
             } else {
-              return make_json_error(exp_res.error());
+              return UnexpJsonError(std::move(exp_res.error()));
             }
           });
       return feach.transform([res = std::move(result)]() {
