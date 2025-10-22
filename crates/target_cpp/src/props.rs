@@ -48,7 +48,13 @@ impl JsonCodeGenInclude {
             JsonCodeGenInclude::Ignore => None,
             JsonCodeGenInclude::Local => Some(format!("\"{}\"", basename)),
             JsonCodeGenInclude::System => Some(format!("<{}>", basename)),
-            JsonCodeGenInclude::Path(path) => Some(path.clone()),
+            JsonCodeGenInclude::Path(path) => {
+                let fullpath = Path::new(&path).join(Path::new(&basename));
+                match fullpath.to_str() {
+                    Some(s) => Some(format!("\"{}\"", s)),
+                    None => panic!("invalid include path {}", path)
+                }
+            }
         };
         match value {
             None => String::new(),
@@ -98,6 +104,7 @@ pub struct CppProps {
     #[serde(rename = "include_writer", default)]
     include_writer: JsonCodeGenInclude,
 
+    #[serde(default)]
     output: Output,
     // include found header files needed?
     // implement destructors
@@ -251,15 +258,19 @@ mod tests {
         );
         let props2: CppProps = serde_json::from_str(inc2).unwrap();
         assert_eq!(
-            matches!(props2.include_reader, JsonCodeGenInclude::Ignore),
+            matches!(props2.include_reader, JsonCodeGenInclude::System),
             true
         );
         assert_eq!(
-            match props2.include_data {
+            match &props2.include_data {
                 JsonCodeGenInclude::Path(path) => path.eq("where/it/is"),
                 _ => false,
             },
             true
+        );
+        assert_eq!(
+            props2.include_data.get_header_file("test.h"),
+            "#include \"where/it/is/test.h\"\n"
         );
     }
 }
