@@ -3,7 +3,7 @@
 #ifdef USE_SIMD
 
 #include "json_reader.hpp"
-#include "simd_json/simdjson.h"
+#include "simdjson.h"
 
 namespace JsonTypedefCodeGen::Reader {
 

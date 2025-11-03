@@ -16,9 +16,6 @@ option(BUILD_WRITER "build the reader wrappers" OFF)
 option(BUILD_TEST "build the tests" ON)
 
 # params
-set(EXT_LIB_SIMD_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where simd_json directory is")
-set(EXT_LIB_NLOH_JSON_PATH "${CMAKE_SOURCE_DIR}/external/" CACHE PATH "where nlohmann directory is")
-
 if (CMAKE_JS_VERSION)
   set(ENABLE_NAPI ON)
 endif()
@@ -37,8 +34,8 @@ if (ENABLE_SIMD_JSON AND (NOT BUILD_READER))
 endif()
 
 # C/C++
-set(CMAKE_C_COMPILER "gcc-13")
-set(CMAKE_CXX_COMPILER "g++-13")
+set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED 23)
 
@@ -91,46 +88,24 @@ if (ENABLE_NAPI)
   include_directories("${NAPI_INCL}")
 endif()
 
+if (ENABLE_SIMD_JSON)
+  find_package(simdjson CONFIG REQUIRED)
+endif()
+
+if (ENABLE_NLOH_JSON)
+  find_package(nlohmann_json CONFIG REQUIRED)
+endif()
+
 # find files
 include_directories("${CMAKE_SOURCE_DIR}/include")
 file(GLOB_RECURSE INC_HPP "include/*.hpp")
 file(GLOB CPPSRC "src/*.cpp" "src/*.hpp" "src/stream_writer/*.cpp" "src/stream_writer/*.hpp")
 
-if (ENABLE_NLOH_JSON)
-  set(NLOH_JSON_DIR "${EXT_LIB_NLOH_JSON_PATH}/nlohmann")
-  if (NOT EXISTS ${NLOH_JSON_DIR})
-    message(FATAL_ERROR "cannot find \"nlohmann\" directory in ${EXT_LIB_NLOH_JSON_PATH}")
-  endif()
-
-  file(GLOB_RECURSE NLOHJSONEXT "${NLOH_JSON_DIR}/*.hpp")
-  list(LENGTH NLOHJSONEXT NLOHJSONEXT_LEN)
-  if (NLOHJSONEXT_LEN EQUAL 0)
-    message(FATAL_ERROR "cannot find nlohmann header files")
-  endif()
-
-  include_directories("${EXT_LIB_NLOH_JSON_PATH}")
-endif()
-
 # reader library options
 if (BUILD_READER)
 
   if (ENABLE_SIMD_JSON)
-    set(SIMD_JSON_DIR "${EXT_LIB_SIMD_JSON_PATH}/simd_json")
-    if (NOT EXISTS ${SIMD_JSON_DIR})
-      message(FATAL_ERROR "cannot find \"simd_json\" directory in ${EXT_LIB_SIMD_JSON_PATH}")
-    elseif (NOT EXISTS "${SIMD_JSON_DIR}/simdjson.h")
-      message(FATAL_ERROR "cannot find \"simd_json/simdjson.h\" directory in ${EXT_LIB_SIMD_JSON_PATH}")
-    endif()
-
-    file(GLOB SIMDJSONEXT "${SIMD_JSON_DIR}/simdjson.cpp")
-    list(LENGTH SIMDJSONEXT SIMDJSONEXT_LEN)
-    if (SIMDJSONEXT_LEN EQUAL 0)
-      message(FATAL_ERROR "cannot find simd_json files in ")
-    endif()
-
     add_definitions(-DUSE_SIMD)
-
-    include_directories("${EXT_LIB_SIMD_JSON_PATH}")
     file(GLOB SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
     set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
   endif()
@@ -177,6 +152,12 @@ else()
     json_wrapper PROPERTIES
     VERSION "${VERSION}"
     SOVERSION "${VERSION_MAJOR}")
+  if (simdjson_FOUND)
+    target_link_libraries(json_wrapper simdjson::simdjson)
+  endif()
+  if (nlohmann_json_FOUND)
+    target_link_libraries(json_wrapper nlohmann_json::nlohmann_json)
+  endif()
 endif()
 
 # tests
@@ -232,13 +213,19 @@ if (BUILD_TEST)
       list(APPEND SCHM_SOURCE ${EXP_FILE_CPP})
     endforeach()
 
-    find_package(GTest)
-    file(GLOB_RECURSE TESTSRC "tests/gtests/*.cpp")
-    file(GLOB_RECURSE TESTHPP "tests/gtests/*.hpp")
+    find_package(GTest REQUIRED)
+    file(GLOB TESTSRC "tests/gtests/*.cpp")
+    file(GLOB TESTHPP "tests/gtests/*.hpp")
 
     # add test options based on the build options
     add_executable(json_wrapper_tests ${TESTSRC} ${TESTHPP} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
+    if (simdjson_FOUND)
+      target_link_libraries(json_wrapper_tests simdjson::simdjson)
+    endif()
+    if (nlohmann_json_FOUND)
+      target_link_libraries(json_wrapper_tests nlohmann_json::nlohmann_json)
+    endif()
   endif()
 
 endif()

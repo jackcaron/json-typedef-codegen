@@ -2,7 +2,7 @@
 
 #include "../spec_reader.hpp"
 
-#include "simd_json/simdjson.h"
+#include "simdjson.h"
 
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Reader;
