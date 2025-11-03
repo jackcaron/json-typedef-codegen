@@ -16,7 +16,6 @@
 
 Add wrapped libraries, at least one is needed:
 
-- default directory CMake looks into is `./external`, but can be configured to look in other locations.
 - _SIMD Json_ must be under the `simd_json` directory, using the single header file version.
 - _Nlohmann Json_ must be under the `nlohmann` directory, using the single include files.
 
@@ -35,6 +34,11 @@ Extra options:
 - `-DBUILD_READER=Off` to disable the deserializer
 
 Built libraries are located in `lib/<CMAKE_BUILD_TYPE>`.
+
+### Nix
+
+Using the Nix shell is a simple way to install the tested version of `gcc`, `cmake`, `simdjson`, and `nlohmann_json`.
+Once in the shell, it's the same building step from `C++ static library`.
 
 ### Node.js NAPI wrapper
 

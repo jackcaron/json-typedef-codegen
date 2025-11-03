@@ -107,7 +107,7 @@ if (BUILD_READER)
   if (ENABLE_SIMD_JSON)
     add_definitions(-DUSE_SIMD)
     file(GLOB SIMDJSONSRC "src/simd_json/*.cpp" "src/simd_json/*.hpp")
-    set(CPPSRC ${CPPSRC} ${SIMDJSONSRC} ${SIMDJSONEXT})
+    set(CPPSRC ${CPPSRC} ${SIMDJSONSRC})
   endif()
 
   if (ENABLE_NLOH_JSON)
@@ -141,6 +141,16 @@ if (BUILD_WRITER)
 
 endif()
 
+# function to assign library dependencies
+function(link_found_libraries targetx)
+  if (simdjson_FOUND)
+    target_link_libraries(${targetx} simdjson::simdjson)
+  endif()
+  if (nlohmann_json_FOUND)
+    target_link_libraries(${targetx} nlohmann_json::nlohmann_json)
+  endif()
+endfunction()
+
 # static/shared library
 add_library(json_wrapper_obj OBJECT ${INC_HPP} ${CPPSRC})
 if (ENABLE_NAPI)
@@ -152,12 +162,8 @@ else()
     json_wrapper PROPERTIES
     VERSION "${VERSION}"
     SOVERSION "${VERSION_MAJOR}")
-  if (simdjson_FOUND)
-    target_link_libraries(json_wrapper simdjson::simdjson)
-  endif()
-  if (nlohmann_json_FOUND)
-    target_link_libraries(json_wrapper nlohmann_json::nlohmann_json)
-  endif()
+
+  link_found_libraries(json_wrapper)
 endif()
 
 # tests
@@ -220,12 +226,7 @@ if (BUILD_TEST)
     # add test options based on the build options
     add_executable(json_wrapper_tests ${TESTSRC} ${TESTHPP} ${INC_HPP} ${SCHM_SOURCE} ${SCHM_HEADERS})
     target_link_libraries(json_wrapper_tests json_wrapper_static GTest::gtest GTest::gtest_main)
-    if (simdjson_FOUND)
-      target_link_libraries(json_wrapper_tests simdjson::simdjson)
-    endif()
-    if (nlohmann_json_FOUND)
-      target_link_libraries(json_wrapper_tests nlohmann_json::nlohmann_json)
-    endif()
+    link_found_libraries(json_wrapper_tests)
   endif()
 
 endif()
