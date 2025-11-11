@@ -3,7 +3,7 @@
 ## Dependencies
 
 - C++23 compiler
-  - only tested with GCC 13
+  - only tested with GCC 13/14
 - CMake (_CMake-GUI for easier configuration_)
 - Node.js/NPM (_for the NAPI wrapper only_)
 - [SIMD Json](https://github.com/simdjson/simdjson)
@@ -16,8 +16,8 @@
 
 Add wrapped libraries, at least one is needed:
 
-- _SIMD Json_ must be under the `simd_json` directory, using the single header file version.
-- _Nlohmann Json_ must be under the `nlohmann` directory, using the single include files.
+- _SIMD Json_
+- _Nlohmann Json_
 
 For a basic build, with both _SIMD Json_ and _Nlohmann Json_, run:
 
@@ -35,7 +35,7 @@ Extra options:
 
 Built libraries are located in `lib/<CMAKE_BUILD_TYPE>`.
 
-### Nix
+### Nix Shell
 
 Using the Nix shell is a simple way to install the tested version of `gcc`, `cmake`, `simdjson`, and `nlohmann_json`.
 Once in the shell, it's the same building step from `C++ static library`.
@@ -55,7 +55,7 @@ Extra scripts/options:
 
 - `build` to only include the deserializer part.
 - `test` to run some quick tests.
-- `-dev` is there to build in debug mode.
+- the `-dev` suffix is there to build in debug mode.
 
 ## Example
 
@@ -171,3 +171,4 @@ Which operations should be generated:
 - [ ] CMake function to help compile a list of `*.jtd.json` files
 - [ ] Include comments from `*.jtd.json` files
 - [ ] Refine the quality of the generated C++ code
+- [ ] Rapid JSON wrapper

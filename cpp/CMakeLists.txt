@@ -56,6 +56,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${TARGET_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 
+
+
 # NAPI, use node.js/npm to find the include directories
 if (ENABLE_NAPI)
   find_program(NODE_exec node REQUIRED)
@@ -164,6 +166,12 @@ else()
     SOVERSION "${VERSION_MAJOR}")
 
   link_found_libraries(json_wrapper)
+
+  # install
+  install(TARGETS json_wrapper DESTINATION lib)
+  if (simdjson_FOUND)
+    install(IMPORTED_RUNTIME_ARTIFACTS simdjson::simdjson DESTINATION lib)
+  endif()
 endif()
 
 # tests
