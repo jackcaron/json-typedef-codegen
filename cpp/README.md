@@ -171,4 +171,6 @@ Which operations should be generated:
 - [ ] CMake function to help compile a list of `*.jtd.json` files
 - [ ] Include comments from `*.jtd.json` files
 - [ ] Refine the quality of the generated C++ code
-- [ ] Rapid JSON wrapper
+- Other wrappers:
+  - [ ] Rapid JSON
+  - [ ] BSON (`bsoncxx`)

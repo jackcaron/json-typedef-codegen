@@ -2,7 +2,7 @@
 authors = ["Ulysse Carion <ulysse@segment.com>"]
 edition = "2021"
 name = "jtd_codegen_cli"
-version = "0.4.1-custom"
+version = "0.5.0-cpp"
 
 [[bin]]
 name = "jtd-codegen"
