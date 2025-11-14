@@ -1,0 +1,18 @@
+{
+  "optionalProperties": {
+    "foo": {
+      "type": "string"
+    },
+    "baz": {
+      "type": "boolean"
+    }
+  },
+  "properties": {
+    "TrueFalse": {
+      "type": "boolean"
+    },
+    "Message": {
+        "type": "string"
+    }
+  }
+}

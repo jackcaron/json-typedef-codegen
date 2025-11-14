@@ -97,7 +97,7 @@ impl<'a, T: Target> CodeGenerator<'a, T> {
 
         self.target.item(
             &mut vec![],
-            &mut T::FileState::default(),
+            &mut root_file_data.state,
             Item::Auxiliary {
                 out_dir: self.out_dir.to_owned(),
             },

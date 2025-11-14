@@ -1,26 +1,27 @@
 [package]
-name = "jtd_codegen_cli"
-version = "0.4.1"
 authors = ["Ulysse Carion <ulysse@segment.com>"]
-edition = "2018"
+edition = "2021"
+name = "jtd_codegen_cli"
+version = "0.5.0-cpp"
 
 [[bin]]
 name = "jtd-codegen"
 path = "src/main.rs"
 
 [dependencies]
-jtd-codegen = { path = "../core" }
-jtd_codegen_target_csharp_system_text = { path = "../target_csharp_system_text" }
-jtd_codegen_target_go = { path = "../target_go" }
-jtd_codegen_target_java_jackson = { path = "../target_java_jackson" }
-jtd_codegen_target_python = { path = "../target_python" }
-jtd_codegen_target_ruby = { path = "../target_ruby" }
-jtd_codegen_target_ruby_sig = { path = "../target_ruby_sig" }
-jtd_codegen_target_rust = { path = "../target_rust" }
-jtd_codegen_target_typescript = { path = "../target_typescript" }
+anyhow = "1.0"
+clap = {version = "2.33.3", features = ["yaml"]}
+colored = "2.0.0"
+jtd = "0.2.1"
+jtd-codegen = {path = "../core"}
+jtd_codegen_target_cpp = {path = "../target_cpp"}
+jtd_codegen_target_csharp_system_text = {path = "../target_csharp_system_text"}
+jtd_codegen_target_go = {path = "../target_go"}
+jtd_codegen_target_java_jackson = {path = "../target_java_jackson"}
+jtd_codegen_target_python = {path = "../target_python"}
+jtd_codegen_target_ruby = {path = "../target_ruby"}
+jtd_codegen_target_ruby_sig = {path = "../target_ruby_sig"}
+jtd_codegen_target_rust = {path = "../target_rust"}
+jtd_codegen_target_typescript = {path = "../target_typescript"}
 serde = "1.0"
 serde_json = "1.0"
-jtd = "0.2.1"
-clap = { version = "2.33.3", features = ["yaml"] }
-colored = "2.0.0"
-anyhow = "1.0"

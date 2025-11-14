@@ -134,13 +134,33 @@ fn main() -> Result<()> {
     if let Some(out_dir) = matches.value_of("rust-out") {
         log.start("Rust", out_dir);
 
-        let target = jtd_codegen_target_rust::Target::new();
+        let extra_derives = matches
+            .value_of("rust-derive")
+            .unwrap_or_default()
+            .to_owned();
+
+        let target = jtd_codegen_target_rust::Target::new(&extra_derives);
 
         let codegen_info =
             jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
                 .with_context(|| "Failed to generate Rust code")?;
 
         log.finish("Rust", &codegen_info);
+    }
+
+    if let Some(out_dir) = matches.value_of("cpp-out") {
+        log.start("C++", out_dir);
+
+        use jtd_codegen_target_cpp::props::CppProps;
+
+        let cpp_props = CppProps::from_file(matches.value_of("cpp-props"))?;
+        let target = jtd_codegen_target_cpp::Target::new(cpp_props, &root_name);
+
+        let codegen_info =
+            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
+                .with_context(|| "Failed to generate C++ code")?;
+
+        log.finish("C++", &codegen_info);
     }
 
     if let Some(out_dir) = matches.value_of("typescript-out") {
@@ -235,7 +255,7 @@ impl Log for JsonLog {
     }
 
     fn finish(&mut self, target: &str, info: &jtd_codegen::codegen::CodegenInfo) {
-        let mut entry = self.0.get_mut(target).unwrap();
+        let entry = self.0.get_mut(target).unwrap();
 
         entry.root_name = info.root_name.clone();
         entry.definition_names = info.definition_names.clone();

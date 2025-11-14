@@ -1,0 +1,12 @@
+# compilation
+build*/*
+lib/*
+bin/*
+external/*
+node_modules/*
+package-lock.json
+tests/gtests/generated/*
+
+# misc.
+notes.txt
+
