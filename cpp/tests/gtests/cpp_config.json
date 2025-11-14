@@ -1,0 +1,7 @@
+{
+  "namespace":"test",
+  "guard":"pragma",
+  "include_data":"local",
+  "include_reader":"system",
+  "output": "both"
+}

@@ -32,6 +32,7 @@ impl SchemaAst {
 #[derive(Debug)]
 pub enum Ast {
     Ref {
+        #[allow(dead_code)]
         metadata: Metadata,
         definition: String,
     },
@@ -426,6 +427,63 @@ impl Ast {
         Self::NullableOf {
             metadata,
             type_: Box::new(self),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn get_type(&self) -> &'static str {
+        match self {
+            Ast::Ref {
+                metadata: _,
+                definition: _,
+            } => "Ref",
+            Ast::Empty { metadata: _ } => "Empty",
+            Ast::Boolean { metadata: _ } => "Boolean",
+            Ast::Int8 { metadata: _ } => "Int8",
+            Ast::Uint8 { metadata: _ } => "Uint8",
+            Ast::Int16 { metadata: _ } => "Int16",
+            Ast::Uint16 { metadata: _ } => "Uint16",
+            Ast::Int32 { metadata: _ } => "Int32",
+            Ast::Uint32 { metadata: _ } => "Uint32",
+            Ast::Float32 { metadata: _ } => "Float32",
+            Ast::Float64 { metadata: _ } => "Float64",
+            Ast::String { metadata: _ } => "String",
+            Ast::Timestamp { metadata: _ } => "Timestamp",
+            Ast::ArrayOf {
+                metadata: _,
+                type_: _,
+            } => "ArrayOf",
+            Ast::DictOf {
+                metadata: _,
+                type_: _,
+            } => "DictOf",
+            Ast::NullableOf {
+                metadata: _,
+                type_: _,
+            } => "NullableOf",
+            Ast::Alias {
+                metadata: _,
+                name: _,
+                type_: _,
+            } => "Alias",
+            Ast::Enum {
+                metadata: _,
+                name: _,
+                members: _,
+            } => "Enum",
+            Ast::Struct {
+                metadata: _,
+                name: _,
+                has_additional: _,
+                fields: _,
+            } => "Struct",
+            Ast::Discriminator {
+                metadata: _,
+                name: _,
+                tag_field_name: _,
+                tag_json_name: _,
+                variants: _,
+            } => "Discriminator",
         }
     }
 }

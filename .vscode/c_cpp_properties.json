@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "name": "Linux",
+      "includePath": [
+        "${workspaceFolder}/cpp/**",
+        "${workspaceFolder}/cpp/node_modules/node-addon-api/**"
+      ],
+      "defines": [
+        "USE_SIMD",
+        "USE_IN_NAPI",
+        "USE_IN_NLOH",
+        "USE_OUT_NLOH",
+        "USE_OUT_NAPI",
+        "IMPL_DESERIALIZE",
+        "IMPL_SERIALIZE"
+      ],
+      "compilerPath": "/usr/bin/gcc-13",
+      "cStandard": "c23",
+      "cppStandard": "c++23",
+      "intelliSenseMode": "clang-x64"
+    }
+  ],
+  "version": 4
+}

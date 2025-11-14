@@ -131,13 +131,13 @@ pub enum Item {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct EnumMember {
     pub name: String,
     pub json_value: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Field {
     pub metadata: Metadata,
     pub name: String,
@@ -146,7 +146,7 @@ pub struct Field {
     pub type_: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct DiscriminatorVariantInfo {
     pub type_name: String,
     pub field_name: String,
