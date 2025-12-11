@@ -127,11 +127,22 @@ namespace JsonTypedefCodeGen::Serialize {
     }
   };
 
+  // ------------------------------------------
 #define SHORT_EXP(expr)                                                        \
   if (ExpType<void> exp = (expr); !exp.has_value()) {                          \
     return exp;                                                                \
   }
 
+  template <typename Type>
+  ExpType<void> serialize_key_value(JWt::Serializer& serializer,
+                                    const std::string_view key,
+                                    const Type& value) {
+    //
+    SHORT_EXP(serializer.write_key(key));
+    return Serialize<Type>::serialize(serializer, value);
+  }
+
+  // ------------------------------------------
   template <typename Type> struct Serialize<std::vector<Type>> {
     using SubType = Serialize<Type>;
     static ExpType<void> serialize(JWt::Serializer& serializer,
@@ -150,8 +161,7 @@ namespace JsonTypedefCodeGen::Serialize {
                                    const JsonMap<Type>& values) {
       SHORT_EXP(serializer.start_object());
       for (const auto& [key, item] : values) {
-        SHORT_EXP(serializer.write_key(key));
-        SHORT_EXP(SubType::serialize(serializer, item));
+        SHORT_EXP(serialize_key_value(serializer, key, item));
       }
       return serializer.end_object();
     }

@@ -253,15 +253,7 @@ impl CppDiscriminatorVariant {
     pub fn get_common_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
-
-        format!(
-            r#"
-  template<> struct Common<{}> {{
-    {}
-  }};
-"#,
-            fullname, entries
-        )
+        create_common_internal_code(&fullname, &entries)
     }
 
     pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
@@ -285,16 +277,13 @@ impl CppDiscriminatorVariant {
                     format!(
                         r#"    if (value.{}) {{
       auto& tmp = *value.{};
-      SHORT_KEY_VAL("{}"sv, tmp);
+      SHORT_EXP(serialize_key_value(serializer, "{}"sv, tmp));
     }}
 "#,
                         f.name, f.name, f.json_name
                     )
                 } else {
-                    format!(
-                        "    SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
-                        f.json_name, f.name
-                    )
+                    format!("    {}\n", format_field(f))
                 }
             })
             .collect::<String>()

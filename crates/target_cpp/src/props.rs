@@ -22,10 +22,10 @@ impl Guard {
     }
 
     fn get_footer(&self) -> String {
-        match self {
-            Guard::Pragma => String::new(),
-            Guard::Name(_) => "\n#endif\n".to_string(),
-        }
+        (match self {
+            Guard::Pragma => "",
+            Guard::Name(_) => "\n#endif\n",
+        }).to_string()
     }
 }
 
@@ -43,7 +43,7 @@ enum JsonCodeGenInclude {
 }
 
 impl JsonCodeGenInclude {
-    pub fn get_header_file(&self, basename: &str) -> String {
+    fn get_header_file(&self, basename: &str) -> String {
         let value = match self {
             JsonCodeGenInclude::Ignore => None,
             JsonCodeGenInclude::Local => Some(format!("\"{}\"", basename)),

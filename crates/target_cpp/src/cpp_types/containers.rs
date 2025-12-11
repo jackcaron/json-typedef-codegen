@@ -12,7 +12,7 @@ impl CppArray {
     pub fn new(idx: TypeIndex, name: &str) -> CppArray {
         CppArray {
             idx,
-            name: name.to_string(),
+            name: name.into(),
         }
     }
 }
@@ -27,7 +27,7 @@ impl CppDict {
     pub fn new(opt_idx: Option<TypeIndex>, name: &str) -> CppDict {
         CppDict {
             opt_idx,
-            name: name.to_string(),
+            name: name.into(),
         }
     }
 }
@@ -42,13 +42,13 @@ impl CppNullable {
     pub fn new(idx: TypeIndex, name: &str) -> CppNullable {
         CppNullable {
             idx,
-            name: name.to_string(),
+            name: name.into(),
         }
     }
 
     fn get_full_name(&self, cpp_state: &CppState) -> String {
         let uptr_name = format!("std::unique_ptr<{}>", self.name);
-        cpp_state.get_aliased_name(&uptr_name).to_string()
+        cpp_state.get_aliased_name(&uptr_name).into()
     }
 
     pub fn prototype(&self, cpp_props: &CppProps, cpp_state: &CppState) -> String {

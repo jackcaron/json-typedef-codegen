@@ -1,4 +1,4 @@
-use jtd_codegen::target;
+use jtd_codegen::target::{self};
 
 use crate::cpp_snippets::{INTERNAL_CODE_STRUCT, INTERNAL_CODE_STRUCT_SER};
 use crate::cpp_types::shared::*;
@@ -62,15 +62,7 @@ impl CppStruct {
     pub fn get_common_internal_code(&self, cpp_props: &CppProps) -> String {
         let fullname = cpp_props.get_namespaced_name(&self.name);
         let entries = self.create_entry_array();
-
-        format!(
-            r#"
-  template<> struct Common<{}> {{
-    {}
-  }};
-"#,
-            fullname, entries
-        )
+        create_common_internal_code(&fullname, &entries)
     }
 
     pub fn get_des_internal_code(&self, cpp_props: &CppProps) -> String {
@@ -91,15 +83,9 @@ impl CppStruct {
             .iter()
             .map(|f| {
                 if f.optional {
-                    format!(
-                        "      if (value.{}) {{ SHORT_KEY_VAL(\"{}\"sv, value.{}); }}\n",
-                        f.name, f.json_name, f.name
-                    )
+                    format!("      if (value.{}) {{ {} }}\n", f.name, format_field(f))
                 } else {
-                    format!(
-                        "      SHORT_KEY_VAL(\"{}\"sv, value.{});\n",
-                        f.json_name, f.name
-                    )
+                    format!("      {}\n", format_field(f))
                 }
             })
             .collect::<String>()

@@ -134,11 +134,10 @@ namespace JsonTypedefCodeGen {
 
   template <typename... Xp>
   constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn first, Xp... etc) {
-    if (auto exp = first(); exp.has_value()) {
-      return chain_exec_void_expected(etc...);
-    } else {
+    if (auto exp = first(); !exp.has_value()) {
       return exp;
     }
+    return chain_exec_void_expected(etc...);
   }
 
 } // namespace JsonTypedefCodeGen

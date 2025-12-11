@@ -53,19 +53,24 @@ impl CppState {
             crate::props::Output::Both => "#define IMPL_DESERIALIZE\n#define IMPL_SERIALIZE\n",
         };
 
-        prefix.to_string()
-            + &cpp_props.get_codegen_src_includes()
-            + &(self
-                .src_include_files
-                .iter()
-                .filter_map(|h| {
-                    if self.include_files.contains(h) {
-                        None
-                    } else {
-                        Some(format!("#include {}\n", h))
-                    }
-                })
-                .collect::<String>())
+        let includes = &(self
+            .src_include_files
+            .iter()
+            .filter_map(|h| {
+                if self.include_files.contains(h) {
+                    None
+                } else {
+                    Some(format!("#include {}\n", h))
+                }
+            })
+            .collect::<String>());
+
+        format!(
+            "{}{}{}",
+            prefix,
+            cpp_props.get_codegen_src_includes(),
+            includes
+        )
     }
 
     pub fn write_internal_code(&self, cpp_props: &CppProps) -> String {
@@ -211,16 +216,20 @@ namespace JsonTypedefCodeGen::Serialize {{
         _props: &CppProps,
         meta: Metadata,
     ) -> String {
-        match expr {
-            target::Expr::Boolean => self.add_primitive(Primitives::Bool, meta).0,
-            target::Expr::Int8 => self.add_primitive(Primitives::Int8, meta).0,
-            target::Expr::Uint8 => self.add_primitive(Primitives::Uint8, meta).0,
-            target::Expr::Int16 => self.add_primitive(Primitives::Int16, meta).0,
-            target::Expr::Uint16 => self.add_primitive(Primitives::Uint16, meta).0,
-            target::Expr::Int32 => self.add_primitive(Primitives::Int32, meta).0,
-            target::Expr::Uint32 => self.add_primitive(Primitives::Uint32, meta).0,
-            target::Expr::Float32 => self.add_primitive(Primitives::Float32, meta).0,
-            target::Expr::Float64 => self.add_primitive(Primitives::Float64, meta).0,
+        match &expr {
+            target::Expr::Boolean
+            | target::Expr::Int8
+            | target::Expr::Uint8
+            | target::Expr::Int16
+            | target::Expr::Uint16
+            | target::Expr::Int32
+            | target::Expr::Uint32
+            | target::Expr::Float32
+            | target::Expr::Float64 => match Primitives::try_from(&expr) {
+                Ok(prim) => self.add_primitive(prim, meta).0,
+                Err(err) => panic!("parse primitive: {}", err),
+            },
+
             target::Expr::String => {
                 self.add_include_file("<string>");
                 self.add_primitive(Primitives::String, meta).0
@@ -243,7 +252,7 @@ namespace JsonTypedefCodeGen::Serialize {{
             }
             target::Expr::DictOf(sub_type) => {
                 let name = format!("JsonTypedefCodeGen::JsonMap<{}>", sub_type);
-                match self.cpp_type_indices.get(&sub_type) {
+                match self.cpp_type_indices.get(sub_type) {
                     Some(_) => name,
                     None => {
                         self.add_src_include_file("<format>");
@@ -266,7 +275,7 @@ namespace JsonTypedefCodeGen::Serialize {{
                 let name = format!("std::unique_ptr<{}>", sub_type);
 
                 if let Some(rootname) = &self.root_type {
-                    if (*rootname) == sub_type {
+                    if (*rootname) == *sub_type {
                         self.root_type = Some(name.clone());
                     }
                 }

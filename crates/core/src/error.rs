@@ -11,4 +11,7 @@ pub enum Error {
 
     #[error("i/o error: {0}")]
     Io(#[from] io::Error),
+
+    #[error("conversion: {0}")]
+    Conversion(String),
 }

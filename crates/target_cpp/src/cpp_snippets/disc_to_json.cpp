@@ -6,8 +6,8 @@
         using Types = Disc::Types;
 
         SHORT_EXP(serializer.start_object());
-        std::string_view tag_name = Common<Disc>::entries[size_t(value.type())];
-        SHORT_KEY_VAL("$TAG_KEY$"sv, tag_name);
+        const std::string_view tag_name = Common<Disc>::entries[size_t(value.type())];
+        SHORT_EXP(serialize_key_value(serializer, "$TAG_KEY$"sv, tag_name));
 
         switch(value.type()) {
         default:

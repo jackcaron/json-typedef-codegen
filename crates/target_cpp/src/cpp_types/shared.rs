@@ -152,3 +152,21 @@ pub fn create_visited_array(sz: usize) -> String {
         sz, falses
     )
 }
+
+pub fn format_field(f: &Field) -> String {
+    format!(
+        "SHORT_EXP(serialize_key_value(serializer, \"{}\"sv, value.{}));",
+        f.json_name, f.name
+    )
+}
+
+pub fn create_common_internal_code(name: &str, entries: &str) -> String {
+    format!(
+        r#"
+  template<> struct Common<{}> {{
+    {}
+  }};
+"#,
+        name, entries
+    )
+}
