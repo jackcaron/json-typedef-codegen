@@ -2,12 +2,6 @@
 
 #include "common.hpp"
 
-#include <cstdint>
-#include <memory>
-#include <optional>
-#include <variant>
-#include <vector>
-
 // Neutral JSON representation
 // To get full access to the JsonArray and JsonObject, use
 // the "internal" function to access its internal data structure

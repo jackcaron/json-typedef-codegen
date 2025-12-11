@@ -1,10 +1,6 @@
 #pragma once
 
-#include <expected>
-#include <functional>
-#include <map>
-#include <string>
-#include <string_view>
+#include "headers.hpp"
 
 namespace JsonTypedefCodeGen {
 

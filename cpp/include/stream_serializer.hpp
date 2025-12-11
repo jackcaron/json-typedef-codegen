@@ -2,9 +2,6 @@
 
 #include "json_writer.hpp"
 
-#include <sstream>
-#include <stack>
-
 namespace JsonTypedefCodeGen::Writer {
 
   struct StreamSerializerCreateInfo {

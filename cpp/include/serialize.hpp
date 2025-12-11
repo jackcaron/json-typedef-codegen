@@ -2,10 +2,9 @@
 
 #ifdef IMPL_SERIALIZE
 
+#include "headers.hpp"
 #include "json_data.hpp"
 #include "json_writer.hpp"
-
-#include <memory>
 
 // utility functions for the serialized generated code
 
