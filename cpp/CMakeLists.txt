@@ -11,6 +11,7 @@ project(json-wrapper-lib LANGUAGES CXX)
 option(ENABLE_SIMD_JSON "add SIMD JSON wrapper" OFF)
 option(ENABLE_NLOH_JSON "add Nlohmann JSON wrapper" OFF)
 option(ENABLE_NAPI "add Node.js' NAPI wrapper" OFF)
+option(BUILD_SINGLE_HEADER "compile the header files in a single file" ON)
 option(BUILD_READER "build the reader wrappers" ON)
 option(BUILD_WRITER "build the reader wrappers" OFF)
 option(BUILD_TEST "build the tests" ON)
@@ -55,8 +56,6 @@ endif()
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/${TARGET_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/lib/${TARGET_DIR}")
-
-
 
 # NAPI, use node.js/npm to find the include directories
 if (ENABLE_NAPI)
@@ -140,6 +139,42 @@ if (BUILD_WRITER)
     file(GLOB_RECURSE NAPISRC "src/napi_writer/*.cpp" "src/napi_writer/*.hpp")
     set(CPPSRC ${CPPSRC} ${NAPISRC})
   endif()
+
+endif()
+
+if (BUILD_SINGLE_HEADER)
+
+  set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/generated-headers")
+  set(SINGLE_HEADER_DIR "${CMAKE_SOURCE_DIR}/single-header")
+
+  add_custom_command(
+    OUTPUT "${GENERATED_HEADERS_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${GENERATED_HEADERS_DIR}"
+    DEPENDS "include/headers.hpp"
+  )
+
+  add_custom_command(
+    OUTPUT "${SINGLE_HEADER_DIR}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${SINGLE_HEADER_DIR}"
+  )
+
+  get_directory_property( DEFINES DIRECTORY ${CMAKE_SOURCE_DIR} COMPILE_DEFINITIONS )
+  string(REPLACE ";" "\\;" DEFINES "${DEFINES}")
+  if (BUILD_READER)
+    set(DEFINES "${DEFINES}\\;IMPL_DESERIALIZE")
+  endif()
+  if (BUILD_WRITER)
+    set(DEFINES "${DEFINES}\\;IMPL_SERIALIZE")
+  endif()
+
+  set(SCRIPT_DIR "${CMAKE_SOURCE_DIR}/scripts/make_single_header.sh")
+  add_custom_target(
+    singleheader
+    ALL
+    COMMAND "${SCRIPT_DIR}" "${GENERATED_HEADERS_DIR}" "${SINGLE_HEADER_DIR}" "${DEFINES}" "${CMAKE_CXX_COMPILER}"
+    DEPENDS ${INC_HPP} "${GENERATED_HEADERS_DIR}" "${SINGLE_HEADER_DIR}"
+    COMMENT "Single-Header"
+  )
 
 endif()
 

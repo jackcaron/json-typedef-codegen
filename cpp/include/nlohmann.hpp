@@ -1,7 +1,7 @@
 #pragma once
 
 #if defined(USE_IN_NLOH) || defined(USE_OUT_NLOH)
-#include "nlohmann/json.hpp"
+#include <nlohmann/json.hpp>
 #endif
 
 #ifdef USE_IN_NLOH

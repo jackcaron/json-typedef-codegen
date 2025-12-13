@@ -4,6 +4,7 @@ lib/*
 bin/*
 external/*
 node_modules/*
+single-header/*
 package-lock.json
 tests/gtests/generated/*
 
