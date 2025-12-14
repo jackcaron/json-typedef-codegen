@@ -5,27 +5,26 @@ error_echo() {
   exit 1
 }
 
-SRC_DIR=$(realpath $1)
+GEN_HDR_DIR=$(realpath $1)
 DST_DIR=$(realpath $2)
 ALL_DEFINES=$3
 COMPILER=$4
 
-[[ -z $SRC_DIR ]] && error_echo "ERROR: missing source directory"
-[[ -d $SRC_DIR ]] || error_echo "ERROR: cannot find source directory ${SRC_DIR}"
+[[ -z $GEN_HDR_DIR ]] && error_echo "ERROR: missing generated headers directory"
+[[ -d $GEN_HDR_DIR ]] || error_echo "ERROR: cannot find generated headers directory ${GEN_HDR_DIR}"
 [[ -z $DST_DIR ]] && error_echo "ERROR: missing destination directory"
 [[ -d $DST_DIR ]] || error_echo "ERROR: cannot find destination directory ${DST_DIR}"
 [[ -z $ALL_DEFINES ]] && error_echo "ERROR: missing defines"
 [[ -z $COMPILER ]] && error_echo "ERROR: missing compiler"
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-SRC_INC_DIR="$( readlink -m "${SCRIPT_DIR}/../include" )"
+SCRIPT_DIR=$(cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
+SRC_INC_DIR=$(realpath "${SCRIPT_DIR}/../include")
 
 # base source file
-BASE_SRC_FILE=$(realpath "${SRC_DIR}/base.cpp")
+BASE_SRC_FILE=$(realpath "${GEN_HDR_DIR}/base.cpp")
 printf "" > $BASE_SRC_FILE # reset the base file
 for HDR in "${SRC_INC_DIR}"/*; do
     F_NAME=$(basename $HDR)
-    # echo "header file: -> ${F_NAME}"
     printf "#include \"${F_NAME}\"\n" >> $BASE_SRC_FILE
 
     # parse the system headers
@@ -36,18 +35,18 @@ for HDR in "${SRC_INC_DIR}"/*; do
             B_NAME=$(basename $F_NAME)
             if [[ $F_NAME != $B_NAME ]]; then
                 D_NAME=$(dirname $F_NAME)
-                mkdir -p "${SRC_DIR}/${D_NAME}"
+                mkdir -p "${GEN_HDR_DIR}/${D_NAME}"
             fi
-            touch "${SRC_DIR}/${F_NAME}"
+            touch "${GEN_HDR_DIR}/${F_NAME}"
         fi
     done
 done
 
 IFS=';' read -r -a DEFINES <<< "$ALL_DEFINES"
 
-CMD="${COMPILER} -E -P -nostdinc++ -isystem ${SRC_DIR} -I${SRC_INC_DIR} -I ${SRC_DIR}"
-for d in "${DEFINES[@]}"; do
-    CMD="${CMD} -D${d}"
+CMD="${COMPILER} -E -P -nostdinc++ -isystem ${GEN_HDR_DIR} -I${SRC_INC_DIR} -I ${GEN_HDR_DIR}"
+for def in "${DEFINES[@]}"; do
+    CMD="${CMD} -D${def}"
 done
 CMD="${CMD} ${BASE_SRC_FILE}"
 
@@ -60,9 +59,9 @@ printf "\n#ifndef ${GUARD}\n#define ${GUARD}\n\n" > $SINGLE_FILE # reset the fil
 MULTI_INC_GUARD="\"Multiple include guards\""
 BASE_0="\"base.o\""
 mapfile -t USED_HDRS <<< $(eval "${CMD} -M -H 2>&1 | grep -ws ${MULTI_INC_GUARD} -A 200 | grep -v ${MULTI_INC_GUARD} | grep -ws ${BASE_0} -B 200 | grep -v ${BASE_0}")
-PREFIX="${SRC_DIR}/"
-for d in "${USED_HDRS[@]}"; do
-    printf "#include <${d#$PREFIX}>\n" >> $SINGLE_FILE
+PREFIX="${GEN_HDR_DIR}/"
+for HDR in "${USED_HDRS[@]}"; do
+    printf "#include <${HDR#$PREFIX}>\n" >> $SINGLE_FILE
 done
 
 # grab the combined header files

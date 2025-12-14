@@ -150,7 +150,6 @@ if (BUILD_SINGLE_HEADER)
   add_custom_command(
     OUTPUT "${GENERATED_HEADERS_DIR}"
     COMMAND ${CMAKE_COMMAND} -E make_directory "${GENERATED_HEADERS_DIR}"
-    DEPENDS "include/headers.hpp"
   )
 
   add_custom_command(
@@ -169,11 +168,10 @@ if (BUILD_SINGLE_HEADER)
 
   set(SCRIPT_DIR "${CMAKE_SOURCE_DIR}/scripts/make_single_header.sh")
   add_custom_target(
-    singleheader
+    single-header
     ALL
     COMMAND "${SCRIPT_DIR}" "${GENERATED_HEADERS_DIR}" "${SINGLE_HEADER_DIR}" "${DEFINES}" "${CMAKE_CXX_COMPILER}"
     DEPENDS ${INC_HPP} "${GENERATED_HEADERS_DIR}" "${SINGLE_HEADER_DIR}"
-    COMMENT "Single-Header"
   )
 
 endif()
