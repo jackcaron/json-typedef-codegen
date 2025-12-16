@@ -118,10 +118,9 @@ namespace JsonTypedefCodeGen::Deserialize {
     if (value.has_value()) {
       const auto val = value.value();
       if (val < _min || val > _max) {
-        return make_json_error(
-            JsonErrorTypes::Number,
-            std::format("Signed value {} outside limits {}:{}"sv, val, _min,
-                        _max));
+        const auto msg = std::format("Signed value {} outside limits {}:{}"sv,
+                                     val, _min, _max);
+        return make_json_error(JsonErrorTypes::Number, msg);
       }
       return ExpType<NumT>((NumT)val);
     }
@@ -134,9 +133,9 @@ namespace JsonTypedefCodeGen::Deserialize {
     if (value.has_value()) {
       const auto val = value.value();
       if (val > _max) {
-        return make_json_error(
-            JsonErrorTypes::Number,
-            std::format("Unsigned value {} is greater than {}"sv, val, _max));
+        const auto msg =
+            std::format("Unsigned value {} is greater than {}"sv, val, _max);
+        return make_json_error(JsonErrorTypes::Number, msg);
       }
       return ExpType<NumT>((NumT)val);
     }
@@ -150,16 +149,14 @@ namespace JsonTypedefCodeGen::Deserialize {
     if (value.has_value()) {
       const auto val = value.value();
       if (val < _min || val > _max) {
-        return make_json_error(
-            JsonErrorTypes::Number,
-            std::format("Double value {} outside of float limits {}:{}"sv, val,
-                        _min, _max));
+        const auto msg = std::format(
+            "Double value {} outside of float limits {}:{}"sv, val, _min, _max);
+        return make_json_error(JsonErrorTypes::Number, msg);
       } else if (std::fabs(val) < _eps) {
-        return make_json_error(
-            JsonErrorTypes::Number,
-            std::format(
-                "Double value {} outside of float zeroes limits {}:{}"sv, val,
-                -_eps, _eps));
+        const auto msg = std::format(
+            "Double value {} outside of float zeroes limits {}:{}"sv, val,
+            -_eps, _eps);
+        return make_json_error(JsonErrorTypes::Number, msg);
       }
       return ExpType<float>((float)val);
     }

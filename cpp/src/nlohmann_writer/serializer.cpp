@@ -1,126 +1,147 @@
-#include "serializer.hpp"
 
 #include "../internal.hpp"
 
+#include "../spec_writer.hpp"
+#include "nlohmann/json.hpp"
+
+#include <stack>
+
 using namespace std::string_view_literals;
-using NType = nlohmann::detail::value_t;
+using namespace JsonTypedefCodeGen;
+using namespace JsonTypedefCodeGen::Writer;
 using namespace JsonTypedefCodeGen::Writer::Specialization;
 
-inline States get_root_state(const NJson& root) {
-  return root.type() == NType::object ? States::RootObject : States::RootArray;
-}
+using NType = nlohmann::detail::value_t;
 
-NlohSerializer::NlohSerializer(NJson& root) //
-    : StateBaseSerializer(get_root_state(root)), m_root(root) {}
+namespace {
 
-ExpType<void> NlohSerializer::close() {
-  if (can_close() && m_jsons.empty()) {
-    return ExpType<void>();
+  using NJson = nlohmann::json;
+
+  inline States get_root_state(const NJson& root) {
+    return root.type() == NType::object ? States::RootObject
+                                        : States::RootArray;
   }
-  return make_json_error(
-      JsonErrorTypes::Invalid,
-      "Serializer still have pending operations to complete"sv);
-}
 
-ExpType<void> NlohSerializer::end_item() {
-  auto last_js = std::move(json());
-  pop_json();
+  class NlohSerializer final : public Specialization::StateBaseSerializer {
+  private:
+    NJson& m_root;
+    std::stack<NJson> m_jsons;
 
-  switch (state()) {
-  case States::ObjectKey: {
-    auto last_key = std::move(key());
-    pop_key();
-    pop_state(); // go back to an object state
+    inline NJson& json() { return m_jsons.top(); }
+    inline void push_json(NJson js) { m_jsons.emplace(js); }
+    inline void pop_json() { m_jsons.pop(); }
 
-    switch (state()) {
-    case States::RootObject:
-      m_root[last_key] = std::move(last_js);
-      break;
-    case States::Object:
-      json()[last_key] = std::move(last_js);
-      break;
-    default:
-      return make_json_error(JsonErrorTypes::Invalid,
-                             "expected to be an object"sv);
+    ExpType<void> end_item() {
+      auto last_js = std::move(json());
+      pop_json();
+
+      switch (state()) {
+      case States::ObjectKey: {
+        auto last_key = std::move(key());
+        pop_key();
+        pop_state(); // go back to an object state
+
+        switch (state()) {
+        case States::RootObject:
+          m_root[last_key] = std::move(last_js);
+          break;
+        case States::Object:
+          json()[last_key] = std::move(last_js);
+          break;
+        default:
+          return make_json_error(JsonErrorTypes::Invalid,
+                                 "expected to be an object"sv);
+        }
+      } break;
+
+      case States::RootArray:
+        m_root.push_back(std::move(last_js));
+        break;
+
+      case States::Array:
+        json().push_back(std::move(last_js));
+        break;
+
+      default:
+        return make_json_error(JsonErrorTypes::Invalid,
+                               "adding an item in an object without a key"sv);
+      }
+      return ExpType<void>();
     }
-  } break;
 
-  case States::RootArray:
-    m_root.push_back(std::move(last_js));
-    break;
+  public:
+    NlohSerializer() = delete;
+    NlohSerializer(NJson& root)
+        : StateBaseSerializer(get_root_state(root)), m_root(root) {}
+    ~NlohSerializer() {}
 
-  case States::Array:
-    json().push_back(std::move(last_js));
-    break;
+    virtual ExpType<void> close() override {
+      if (can_close() && m_jsons.empty()) {
+        return ExpType<void>();
+      }
+      return make_json_error(
+          JsonErrorTypes::Invalid,
+          "Serializer still have pending operations to complete"sv);
+    }
 
-  default:
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "adding an item in an object without a key"sv);
-  }
-  return ExpType<void>();
-}
+    virtual ExpType<void> write_null() override {
+      push_json(NJson(nullptr));
+      return end_item();
+    }
+    virtual ExpType<void> write_bool(const bool b) override {
+      push_json(NJson(b));
+      return end_item();
+    }
+    virtual ExpType<void> write_double(const double d) override {
+      push_json(NJson(d));
+      return end_item();
+    }
+    virtual ExpType<void> write_i64(const int64_t i) override {
+      push_json(NJson(i));
+      return end_item();
+    }
+    virtual ExpType<void> write_u64(const uint64_t u) override {
+      push_json(NJson(u));
+      return end_item();
+    }
+    virtual ExpType<void> write_str(const std::string_view str) override {
+      push_json(NJson(str));
+      return end_item();
+    }
 
-ExpType<void> NlohSerializer::write_null() {
-  push_json(NJson(nullptr));
-  return end_item();
-}
+    virtual ExpType<void> start_object() override {
+      return can_start_object().transform([&]() -> void {
+        push_state(States::Object);
+        push_json(NJson::object());
+      });
+    }
+    virtual ExpType<void> end_object() override {
+      return flatten_expected(
+          can_end_object().transform([&]() -> ExpType<void> {
+            pop_state();
+            return end_item();
+          }));
+    }
 
-ExpType<void> NlohSerializer::write_bool(const bool b) {
-  push_json(NJson(b));
-  return end_item();
-}
+    virtual ExpType<void> start_array() override {
+      return can_start_array().transform([&]() -> void {
+        push_state(States::Array);
+        push_json(NJson::array());
+      });
+    }
+    virtual ExpType<void> end_array() override {
+      return flatten_expected(can_end_array().transform([&]() -> ExpType<void> {
+        pop_state(); // move out of the array
+        return end_item();
+      }));
+    }
 
-ExpType<void> NlohSerializer::write_double(const double d) {
-  push_json(NJson(d));
-  return end_item();
-}
+    static Serializer create(NJson& root) {
+      return create_serializer(std::make_unique<NlohSerializer>(root));
+    }
+  };
 
-ExpType<void> NlohSerializer::write_i64(const int64_t i) {
-  push_json(NJson(i));
-  return end_item();
-}
-
-ExpType<void> NlohSerializer::write_u64(const uint64_t u) {
-  push_json(NJson(u));
-  return end_item();
-}
-
-ExpType<void> NlohSerializer::write_str(const std::string_view str) {
-  push_json(NJson(str));
-  return end_item();
-}
-
-ExpType<void> NlohSerializer::start_object() {
-  return can_start_object().transform([&]() -> void {
-    push_state(States::Object);
-    push_json(NJson::object());
-  });
-}
-
-ExpType<void> NlohSerializer::end_object() {
-  return flatten_expected(can_end_object().transform([&]() -> ExpType<void> {
-    pop_state();
-    return end_item();
-  }));
-}
-
-ExpType<void> NlohSerializer::start_array() {
-  return can_start_array().transform([&]() -> void {
-    push_state(States::Array);
-    push_json(NJson::array());
-  });
-}
-
-ExpType<void> NlohSerializer::end_array() {
-  return flatten_expected(can_end_array().transform([&]() -> ExpType<void> {
-    pop_state(); // move out of the array
-    return end_item();
-  }));
-}
-
-Serializer NlohSerializer::create(NJson& root) {
-  return create_serializer(std::make_unique<NlohSerializer>(root));
-}
+} // namespace
 
 // -------------------------------------------
 // -------------------------------------------

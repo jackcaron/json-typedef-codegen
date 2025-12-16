@@ -1,60 +1,76 @@
-#include "serializer.hpp"
 
 #include "../../include/stream_serializer.hpp"
 #include "../internal.hpp"
+#include "../spec_writer.hpp"
 
 #include <format>
 #include <memory>
+#include <stack>
 
+using namespace JsonTypedefCodeGen;
+using namespace JsonTypedefCodeGen::Writer;
 using namespace std::string_view_literals;
 using namespace JsonTypedefCodeGen::Writer::Specialization;
 
 // -------------------------------------------
-InternalStreamSerializer::~InternalStreamSerializer() {}
 
-ExpType<void> InternalStreamSerializer::close() { return m_str_ser->close(); }
+namespace {
 
-ExpType<void> InternalStreamSerializer::write_null() {
-  return m_str_ser->write_null();
-}
-ExpType<void> InternalStreamSerializer::write_bool(const bool b) {
-  return m_str_ser->write_bool(b);
-}
-ExpType<void> InternalStreamSerializer::write_double(const double d) {
-  return m_str_ser->write_double(d);
-}
-ExpType<void> InternalStreamSerializer::write_i64(const int64_t i) {
-  return m_str_ser->write_i64(i);
-}
-ExpType<void> InternalStreamSerializer::write_u64(const uint64_t u) {
-  return m_str_ser->write_u64(u);
-}
-ExpType<void> InternalStreamSerializer::write_str(const std::string_view str) {
-  return m_str_ser->write_str(str);
-}
+  class InternalStreamSerializer final : public Specialization::AbsSerializer {
+  private:
+    StreamSerializer* m_str_ser = nullptr;
 
-ExpType<void> InternalStreamSerializer::start_object() {
-  return m_str_ser->start_object();
-}
-ExpType<void> InternalStreamSerializer::write_key(const std::string_view key) {
-  return m_str_ser->write_key(key);
-}
-ExpType<void> InternalStreamSerializer::end_object() {
-  return m_str_ser->end_object();
-}
+  public:
+    InternalStreamSerializer() = delete;
+    InternalStreamSerializer(StreamSerializer& str_ser) : m_str_ser(&str_ser) {}
+    ~InternalStreamSerializer() {}
 
-ExpType<void> InternalStreamSerializer::start_array() {
-  return m_str_ser->start_array();
-}
-ExpType<void> InternalStreamSerializer::end_array() {
-  return m_str_ser->end_array();
-}
+    virtual ExpType<void> close() override { return m_str_ser->close(); }
 
-Serializer InternalStreamSerializer::create(StreamSerializer& str_ser) {
-  return create_serializer(std::make_unique<InternalStreamSerializer>(str_ser));
-}
+    virtual ExpType<void> write_null() override {
+      return m_str_ser->write_null();
+    }
+    virtual ExpType<void> write_bool(const bool b) override {
+      return m_str_ser->write_bool(b);
+    }
+    virtual ExpType<void> write_double(const double d) override {
+      return m_str_ser->write_double(d);
+    }
+    virtual ExpType<void> write_i64(const int64_t i) override {
+      return m_str_ser->write_i64(i);
+    }
+    virtual ExpType<void> write_u64(const uint64_t u) override {
+      return m_str_ser->write_u64(u);
+    }
+    virtual ExpType<void> write_str(const std::string_view str) override {
+      return m_str_ser->write_str(str);
+    }
 
-// -------------------------------------------
+    virtual ExpType<void> start_object() override {
+      return m_str_ser->start_object();
+    }
+    virtual ExpType<void> write_key(const std::string_view key) override {
+      return m_str_ser->write_key(key);
+    }
+    virtual ExpType<void> end_object() override {
+      return m_str_ser->end_object();
+    }
+
+    virtual ExpType<void> start_array() override {
+      return m_str_ser->start_array();
+    }
+    virtual ExpType<void> end_array() override {
+      return m_str_ser->end_array();
+    }
+
+    static Serializer create(StreamSerializer& str_ser) {
+      return create_serializer(
+          std::make_unique<InternalStreamSerializer>(str_ser));
+    }
+  };
+
+} // namespace
+
 // -------------------------------------------
 namespace JsonTypedefCodeGen::Writer {
 
@@ -90,20 +106,6 @@ namespace JsonTypedefCodeGen::Writer {
     }
   }
 
-  DLL_PUBLIC ExpType<void> StreamSerializer::close() {
-    if (m_closed) {
-      return make_json_error(JsonErrorTypes::Invalid,
-                             "string serializer already closed"sv);
-    }
-    m_closed = true;
-    --m_indent;
-    if (m_close_root_item) {
-      write_indent();
-      (*m_os) << (top().is_array ? "]"sv : "}"sv);
-    }
-    return ExpType<void>();
-  }
-
 #define CHECK_CLOSED                                                           \
   if (m_closed) {                                                              \
     return make_json_error(JsonErrorTypes::Invalid,                            \
@@ -120,6 +122,18 @@ namespace JsonTypedefCodeGen::Writer {
     }                                                                          \
   } else {                                                                     \
     end_item();                                                                \
+  }
+
+  DLL_PUBLIC ExpType<void> StreamSerializer::close() {
+    CHECK_CLOSED;
+
+    m_closed = true;
+    --m_indent;
+    if (m_close_root_item) {
+      write_indent();
+      (*m_os) << (top().is_array ? "]"sv : "}"sv);
+    }
+    return ExpType<void>();
   }
 
   DLL_PUBLIC ExpType<void> StreamSerializer::write_null() {

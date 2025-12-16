@@ -65,10 +65,6 @@ namespace JsonTypedefCodeGen {
                                            const std::string_view message) {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
-  constexpr UnexpJsonError make_json_error(const JsonErrorTypes type,
-                                           const std::string& message) {
-    return UnexpJsonError(std::in_place_t{}, type, message);
-  }
 
   template <typename Type> using JsonMap = std::map<std::string, Type>;
 
