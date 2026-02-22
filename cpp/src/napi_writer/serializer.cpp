@@ -3,11 +3,11 @@
 #include "../spec_writer.hpp"
 
 #include <napi.h>
-using namespace std::string_view_literals;
 
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Writer;
 using namespace JsonTypedefCodeGen::Writer::Specialization;
+using namespace std::string_view_literals;
 
 namespace {
 

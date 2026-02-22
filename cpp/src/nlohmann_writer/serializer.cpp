@@ -6,10 +6,10 @@
 
 #include <stack>
 
-using namespace std::string_view_literals;
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Writer;
 using namespace JsonTypedefCodeGen::Writer::Specialization;
+using namespace std::string_view_literals;
 
 using NType = nlohmann::detail::value_t;
 
