@@ -1,7 +1,9 @@
+mod cli;
 mod root_name;
 
 use anyhow::{format_err, Context, Result};
-use clap::{crate_version, load_yaml, App};
+use clap::Parser;
+use cli::Cli;
 use jtd::{Schema, SerdeSchema};
 use serde::Serialize;
 use std::collections::BTreeMap;
@@ -11,166 +13,139 @@ use std::io::Read;
 use std::path::Path;
 
 fn main() -> Result<()> {
-    let cli_yaml = load_yaml!("cli.yaml");
-    let matches = App::from(cli_yaml).version(crate_version!()).get_matches();
+    let cli = Cli::parse();
 
-    let mut log: Box<dyn Log> = match matches.value_of("log-format").unwrap() {
+    let mut log: Box<dyn Log> = match cli.log_format.as_str() {
         "pretty" => Box::new(PrettyLog()),
         "minimal" => Box::new(MinimalLog()),
         "json" => Box::new(JsonLog(BTreeMap::new())),
         _ => unreachable!(),
     };
 
-    let input = matches.value_of("schema").unwrap();
+    let input = &cli.schema;
 
     // Determine the desired root name to pass to jtd_codegen. If the user has
     // supplied root-name, we'll use that. Otherwise, we'll infer a desired root
     // name from the name of the input file.
     let root_name =
-        root_name::root_name_from_input_name(matches.value_of("root-name").unwrap_or(input))
-            .to_owned();
+        root_name::root_name_from_input_name(cli.root_name.as_deref().unwrap_or(input)).to_owned();
 
-    // Open, parse, and validate the input schema.
-    let input_reader: Box<dyn Read> = match input {
-        "-" => Box::new(std::io::stdin()),
-        _ => Box::new(File::open(input).with_context(|| "Failed to open input file")?),
+    let schema: Schema = {
+        // Open, parse, and validate the input schema.
+        let input_reader: Box<dyn Read> = match input.as_str() {
+            "-" => Box::new(std::io::stdin()),
+            _ => Box::new(File::open(input).with_context(|| "Failed to open input file")?),
+        };
+        let serde_schema: SerdeSchema = serde_json::from_reader(input_reader)
+            .with_context(|| "Failed to parse input as JSON")?;
+        serde_schema
+            .try_into()
+            .map_err(|err| format_err!("{:?}", err))
+            .with_context(|| "Failed to validate input schema")?
     };
-
-    let serde_schema: SerdeSchema =
-        serde_json::from_reader(input_reader).with_context(|| "Failed to parse input as JSON")?;
-
-    let schema: Schema = serde_schema
-        .try_into()
-        .map_err(|err| format_err!("{:?}", err))
-        .with_context(|| "Failed to validate input schema")?;
 
     // Generate code for all enabled targets.
 
-    if let Some(out_dir) = matches.value_of("csharp-system-text-out") {
+    if let Some(out_dir) = &cli.csharp_system_text_out {
         log.start("C# + System.Text.Json", out_dir);
 
-        let namespace = matches
-            .value_of("csharp-system-text-namespace")
-            .unwrap()
-            .to_owned();
-
+        let namespace = cli.csharp_system_text_namespace.as_ref().unwrap().clone();
         let target = jtd_codegen_target_csharp_system_text::Target::new(namespace);
 
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate C# + System.Text.Json code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate C# + System.Text.Json code")?;
 
         log.finish("C# + System.Text.Json", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("go-out") {
+    if let Some(out_dir) = &cli.go_out {
         log.start("Go", out_dir);
 
-        let package = matches.value_of("go-package").unwrap().to_owned();
-
+        let package = cli.go_package.as_ref().unwrap().clone();
         let target = jtd_codegen_target_go::Target::new(package);
 
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Go code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Go code")?;
 
         log.finish("Go", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("java-jackson-out") {
+    if let Some(out_dir) = &cli.java_jackson_out {
         log.start("Java + Jackson", out_dir);
 
-        let package = matches.value_of("java-jackson-package").unwrap().to_owned();
-
+        let package = cli.java_jackson_package.as_ref().unwrap().clone();
         let target = jtd_codegen_target_java_jackson::Target::new(package);
 
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Java + Jackson code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Java + Jackson code")?;
 
         log.finish("Java + Jackson", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("python-out") {
+    if let Some(out_dir) = &cli.python_out {
         log.start("Python", out_dir);
 
         let target = jtd_codegen_target_python::Target::new();
-
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Python code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Python code")?;
 
         log.finish("Python", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("ruby-out") {
+    if let Some(out_dir) = &cli.ruby_out {
         log.start("Ruby", out_dir);
 
-        let module = matches.value_of("ruby-module").unwrap().to_owned();
-
+        let module = cli.ruby_module.as_ref().unwrap().clone();
         let target = jtd_codegen_target_ruby::Target::new(module);
 
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Ruby code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Ruby code")?;
 
         log.finish("Ruby", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("ruby-sig-out") {
+    if let Some(out_dir) = &cli.ruby_sig_out {
         log.start("Ruby Signatures", out_dir);
 
-        let module = matches.value_of("ruby-sig-module").unwrap().to_owned();
-
+        let module = cli.ruby_sig_module.as_ref().unwrap().clone();
         let target = jtd_codegen_target_ruby_sig::Target::new(module);
 
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Ruby Signatures code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Ruby Signatures code")?;
 
         log.finish("Ruby Signatures", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("rust-out") {
+    if let Some(out_dir) = &cli.rust_out {
         log.start("Rust", out_dir);
 
-        let extra_derives = matches
-            .value_of("rust-derive")
-            .unwrap_or_default()
-            .to_owned();
-
+        let extra_derives = cli.rust_derive.as_deref().unwrap_or_default();
         let target = jtd_codegen_target_rust::Target::new(&extra_derives);
-
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate Rust code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate Rust code")?;
 
         log.finish("Rust", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("cpp-out") {
+    if let Some(out_dir) = &cli.cpp_out {
         log.start("C++", out_dir);
 
         use jtd_codegen_target_cpp::props::CppProps;
 
-        let cpp_props = CppProps::from_file(matches.value_of("cpp-props"))?;
+        let cpp_props = CppProps::from_file(cli.cpp_props.as_deref())?;
         let target = jtd_codegen_target_cpp::Target::new(cpp_props, &root_name);
-
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate C++ code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate C++ code")?;
 
         log.finish("C++", &codegen_info);
     }
 
-    if let Some(out_dir) = matches.value_of("typescript-out") {
+    if let Some(out_dir) = &cli.typescript_out {
         log.start("TypeScript", out_dir);
 
         let target = jtd_codegen_target_typescript::Target::new();
-
-        let codegen_info =
-            jtd_codegen::codegen(&target, root_name.clone(), &schema, &Path::new(out_dir))
-                .with_context(|| "Failed to generate TypeScript code")?;
+        let codegen_info = jtd_codegen::codegen(&target, &root_name, &schema, &Path::new(out_dir))
+            .with_context(|| "Failed to generate TypeScript code")?;
 
         log.finish("TypeScript", &codegen_info);
     }

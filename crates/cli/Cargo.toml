@@ -10,7 +10,8 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow = "1.0"
-clap = {version = "2.33.3", features = ["yaml"]}
+clap = { version = "4", features = ["derive"] }
+clap_derive = "4"
 colored = "2.0.0"
 jtd = "0.2.1"
 jtd-codegen = {path = "../core"}

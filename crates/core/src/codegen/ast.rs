@@ -12,8 +12,8 @@ pub struct SchemaAst {
 }
 
 impl SchemaAst {
-    pub fn new<T: Target>(target: &T, root_name: String, schema: &Schema) -> Self {
-        let root = Ast::new_top_level(target, root_name, schema);
+    pub fn new<T: Target>(target: &T, root_name: &str, schema: &Schema) -> Self {
+        let root = Ast::new_top_level(target, root_name.to_owned(), schema);
         let definitions = schema
             .definitions
             .iter()

@@ -21,7 +21,7 @@ pub struct CodegenInfo {
 
 pub fn codegen<T: Target>(
     target: &T,
-    root_name: String,
+    root_name: &str,
     schema: &Schema,
     out_dir: &Path,
 ) -> Result<CodegenInfo> {
