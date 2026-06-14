@@ -27,9 +27,7 @@ namespace {
 
     virtual ExpType<void> close() override { return m_str_ser->close(); }
 
-    virtual ExpType<void> write_null() override {
-      return m_str_ser->write_null();
-    }
+    virtual ExpType<void> write_null() override { return m_str_ser->write_null(); }
     virtual ExpType<void> write_bool(const bool b) override {
       return m_str_ser->write_bool(b);
     }
@@ -52,20 +50,13 @@ namespace {
     virtual ExpType<void> write_key(const std::string_view key) override {
       return m_str_ser->write_key(key);
     }
-    virtual ExpType<void> end_object() override {
-      return m_str_ser->end_object();
-    }
+    virtual ExpType<void> end_object() override { return m_str_ser->end_object(); }
 
-    virtual ExpType<void> start_array() override {
-      return m_str_ser->start_array();
-    }
-    virtual ExpType<void> end_array() override {
-      return m_str_ser->end_array();
-    }
+    virtual ExpType<void> start_array() override { return m_str_ser->start_array(); }
+    virtual ExpType<void> end_array() override { return m_str_ser->end_array(); }
 
     static Serializer create(StreamSerializer& str_ser) {
-      return create_serializer(
-          std::make_unique<InternalStreamSerializer>(str_ser));
+      return create_serializer(std::make_unique<InternalStreamSerializer>(str_ser));
     }
   };
 
@@ -106,22 +97,21 @@ namespace JsonTypedefCodeGen::Writer {
     }
   }
 
-#define CHECK_CLOSED                                                           \
-  if (m_closed) {                                                              \
-    return make_json_error(JsonErrorTypes::Invalid,                            \
-                           "string serializer already closed"sv);              \
+#define CHECK_CLOSED                                                                \
+  if (m_closed) {                                                                   \
+    return make_json_error(JsonErrorTypes::Invalid,                                 \
+                           "string serializer already closed"sv);                   \
   }
-#define CHECK_KEY                                                              \
-  if (!top().is_array) {                                                       \
-    if (!top().last_item_is_a_key) {                                           \
-      return make_json_error(                                                  \
-          JsonErrorTypes::Invalid,                                             \
-          "cannot write a value in an object without a key"sv);                \
-    } else {                                                                   \
-      top().last_item_is_a_key = false;                                        \
-    }                                                                          \
-  } else {                                                                     \
-    end_item();                                                                \
+#define CHECK_KEY                                                                   \
+  if (!top().is_array) {                                                            \
+    if (!top().last_item_is_a_key) {                                                \
+      return make_json_error(JsonErrorTypes::Invalid,                               \
+                             "cannot write a value in an object without a key"sv);  \
+    } else {                                                                        \
+      top().last_item_is_a_key = false;                                             \
+    }                                                                               \
+  } else {                                                                          \
+    end_item();                                                                     \
   }
 
   DLL_PUBLIC ExpType<void> StreamSerializer::close() {
@@ -171,8 +161,7 @@ namespace JsonTypedefCodeGen::Writer {
     (*m_os) << std::format("{}"sv, u);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void>
-  StreamSerializer::write_str(const std::string_view str) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_str(const std::string_view str) {
     CHECK_CLOSED;
     CHECK_KEY;
 
@@ -192,8 +181,7 @@ namespace JsonTypedefCodeGen::Writer {
 
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void>
-  StreamSerializer::write_key(const std::string_view key) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_key(const std::string_view key) {
     CHECK_CLOSED;
 
     if (top().is_array) {
@@ -279,8 +267,7 @@ namespace JsonTypedefCodeGen::Writer {
     return StreamSerializer(copy);
   }
 
-  DLL_PUBLIC ExpType<Serializer>
-  to_stream_serializer(StreamSerializer& str_serial) {
+  DLL_PUBLIC ExpType<Serializer> to_stream_serializer(StreamSerializer& str_serial) {
     return InternalStreamSerializer::create(str_serial);
   }
 

@@ -25,8 +25,7 @@ static constexpr JsonTypes map_simd_types(const json_type type) {
   }
 }
 
-static constexpr JsonErrorTypes
-map_err_type(const simdjson::error_code err_type) {
+static constexpr JsonErrorTypes map_err_type(const simdjson::error_code err_type) {
   switch (err_type) {
   case simdjson::INCORRECT_TYPE:
   case simdjson::SCALAR_DOCUMENT_AS_VALUE:

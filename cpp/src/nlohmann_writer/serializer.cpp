@@ -18,8 +18,11 @@ namespace {
   using NJson = nlohmann::json;
 
   inline States get_root_state(const NJson& root) {
-    return root.type() == NType::object ? States::RootObject
-                                        : States::RootArray;
+    return root.type() == NType::object ? States::RootObject : States::RootArray;
+  }
+
+  inline auto create_nloh_error(const std::string_view message) -> auto {
+    return make_json_error(JsonErrorTypes::Internal, message);
   }
 
   class NlohSerializer final : public Specialization::StateBaseSerializer {
@@ -31,7 +34,18 @@ namespace {
     inline void push_json(NJson js) { m_jsons.emplace(js); }
     inline void pop_json() { m_jsons.pop(); }
 
-    ExpType<void> end_item() {
+    ExpType<void> catch_push(NJson& obj, NJson& last_js) noexcept {
+      try {
+        obj.push_back(std::move(last_js));
+      } catch (const std::bad_alloc& ba) {
+        return create_nloh_error(ba.what());
+      } catch (const nlohmann::detail::type_error& e) {
+        return create_nloh_error(e.what());
+      }
+      return ExpType<void>();
+    }
+
+    ExpType<void> end_item() noexcept {
       auto last_js = std::move(json());
       pop_json();
 
@@ -55,12 +69,10 @@ namespace {
       } break;
 
       case States::RootArray:
-        m_root.push_back(std::move(last_js));
-        break;
+        return catch_push(m_root, last_js);
 
       case States::Array:
-        json().push_back(std::move(last_js));
-        break;
+        return catch_push(json(), last_js);
 
       default:
         return make_json_error(JsonErrorTypes::Invalid,
@@ -116,11 +128,10 @@ namespace {
       });
     }
     virtual ExpType<void> end_object() override {
-      return flatten_expected(
-          can_end_object().transform([&]() -> ExpType<void> {
-            pop_state();
-            return end_item();
-          }));
+      return flatten_expected(can_end_object().transform([&]() -> ExpType<void> {
+        pop_state();
+        return end_item();
+      }));
     }
 
     virtual ExpType<void> start_array() override {
