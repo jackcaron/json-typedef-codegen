@@ -25,35 +25,43 @@ namespace {
     InternalStreamSerializer(StreamSerializer& str_ser) : m_str_ser(&str_ser) {}
     ~InternalStreamSerializer() {}
 
-    virtual ExpType<void> close() override { return m_str_ser->close(); }
+    virtual ExpType<void> close() noexcept override { return m_str_ser->close(); }
 
-    virtual ExpType<void> write_null() override { return m_str_ser->write_null(); }
-    virtual ExpType<void> write_bool(const bool b) override {
+    virtual ExpType<void> write_null() noexcept override {
+      return m_str_ser->write_null();
+    }
+    virtual ExpType<void> write_bool(const bool b) noexcept override {
       return m_str_ser->write_bool(b);
     }
-    virtual ExpType<void> write_double(const double d) override {
+    virtual ExpType<void> write_double(const double d) noexcept override {
       return m_str_ser->write_double(d);
     }
-    virtual ExpType<void> write_i64(const int64_t i) override {
+    virtual ExpType<void> write_i64(const int64_t i) noexcept override {
       return m_str_ser->write_i64(i);
     }
-    virtual ExpType<void> write_u64(const uint64_t u) override {
+    virtual ExpType<void> write_u64(const uint64_t u) noexcept override {
       return m_str_ser->write_u64(u);
     }
-    virtual ExpType<void> write_str(const std::string_view str) override {
+    virtual ExpType<void> write_str(const std::string_view str) noexcept override {
       return m_str_ser->write_str(str);
     }
 
-    virtual ExpType<void> start_object() override {
+    virtual ExpType<void> start_object() noexcept override {
       return m_str_ser->start_object();
     }
-    virtual ExpType<void> write_key(const std::string_view key) override {
+    virtual ExpType<void> write_key(const std::string_view key) noexcept override {
       return m_str_ser->write_key(key);
     }
-    virtual ExpType<void> end_object() override { return m_str_ser->end_object(); }
+    virtual ExpType<void> end_object() noexcept override {
+      return m_str_ser->end_object();
+    }
 
-    virtual ExpType<void> start_array() override { return m_str_ser->start_array(); }
-    virtual ExpType<void> end_array() override { return m_str_ser->end_array(); }
+    virtual ExpType<void> start_array() noexcept override {
+      return m_str_ser->start_array();
+    }
+    virtual ExpType<void> end_array() noexcept override {
+      return m_str_ser->end_array();
+    }
 
     static Serializer create(StreamSerializer& str_ser) {
       return create_serializer(std::make_unique<InternalStreamSerializer>(str_ser));
@@ -79,7 +87,7 @@ namespace JsonTypedefCodeGen::Writer {
     }
   }
 
-  void StreamSerializer::write_indent() {
+  void StreamSerializer::write_indent() noexcept {
     if (m_pretty) {
       (*m_os) << "\n"sv;
       for (int i = 0; i < m_indent; ++i) {
@@ -88,7 +96,7 @@ namespace JsonTypedefCodeGen::Writer {
     }
   }
 
-  void StreamSerializer::end_item() {
+  void StreamSerializer::end_item() noexcept {
     if (top().is_first_item) {
       top().is_first_item = false;
     } else {
@@ -98,7 +106,7 @@ namespace JsonTypedefCodeGen::Writer {
   }
 
 #define CHECK_CLOSED                                                                \
-  if (m_closed) {                                                                   \
+  if (m_closed) [[unlikely]] {                                                      \
     return make_json_error(JsonErrorTypes::Invalid,                                 \
                            "string serializer already closed"sv);                   \
   }
@@ -114,7 +122,7 @@ namespace JsonTypedefCodeGen::Writer {
     end_item();                                                                     \
   }
 
-  DLL_PUBLIC ExpType<void> StreamSerializer::close() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::close() noexcept {
     CHECK_CLOSED;
 
     m_closed = true;
@@ -126,42 +134,43 @@ namespace JsonTypedefCodeGen::Writer {
     return ExpType<void>();
   }
 
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_null() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_null() noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
     (*m_os) << "null"sv;
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_bool(const bool b) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_bool(const bool b) noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
     (*m_os) << (b ? "true"sv : "false"sv);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_double(const double d) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_double(const double d) noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
     (*m_os) << std::format("{}"sv, d);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_i64(const int64_t i) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_i64(const int64_t i) noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
     (*m_os) << std::format("{}"sv, i);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_u64(const uint64_t u) {
+  DLL_PUBLIC ExpType<void> StreamSerializer::write_u64(const uint64_t u) noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
     (*m_os) << std::format("{}"sv, u);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_str(const std::string_view str) {
+  DLL_PUBLIC ExpType<void>
+  StreamSerializer::write_str(const std::string_view str) noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
@@ -169,7 +178,7 @@ namespace JsonTypedefCodeGen::Writer {
     return ExpType<void>();
   }
 
-  DLL_PUBLIC ExpType<void> StreamSerializer::start_object() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::start_object() noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
@@ -181,7 +190,8 @@ namespace JsonTypedefCodeGen::Writer {
 
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::write_key(const std::string_view key) {
+  DLL_PUBLIC ExpType<void>
+  StreamSerializer::write_key(const std::string_view key) noexcept {
     CHECK_CLOSED;
 
     if (top().is_array) {
@@ -199,7 +209,7 @@ namespace JsonTypedefCodeGen::Writer {
     (*m_os) << std::format("\"{}\":"sv, key);
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::end_object() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::end_object() noexcept {
     CHECK_CLOSED;
     if (top().is_array) {
       return make_json_error(JsonErrorTypes::Invalid,
@@ -218,7 +228,7 @@ namespace JsonTypedefCodeGen::Writer {
     return ExpType<void>();
   }
 
-  DLL_PUBLIC ExpType<void> StreamSerializer::start_array() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::start_array() noexcept {
     CHECK_CLOSED;
     CHECK_KEY;
 
@@ -230,7 +240,7 @@ namespace JsonTypedefCodeGen::Writer {
 
     return ExpType<void>();
   }
-  DLL_PUBLIC ExpType<void> StreamSerializer::end_array() {
+  DLL_PUBLIC ExpType<void> StreamSerializer::end_array() noexcept {
     CHECK_CLOSED;
     if (!top().is_array) {
       return make_json_error(JsonErrorTypes::Invalid,
@@ -250,7 +260,7 @@ namespace JsonTypedefCodeGen::Writer {
 #undef CHECK_CLOSED
 
   DLL_PUBLIC ExpType<StreamSerializer>
-  StreamSerializer::create(const StreamSerializerCreateInfo& info) {
+  StreamSerializer::create(const StreamSerializerCreateInfo& info) noexcept {
     if (info.output_stream == nullptr) {
       return make_json_error(
           JsonErrorTypes::InOut,

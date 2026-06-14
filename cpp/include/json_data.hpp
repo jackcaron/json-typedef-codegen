@@ -25,13 +25,15 @@ namespace JsonTypedefCodeGen::Data {
   using ObjectForEachFn =
       std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
 
-  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb);
-  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb);
+  [[nodiscard]] ExpType<void> json_array_for_each(const JsonArray& array,
+                                                  ArrayForEachFn cb);
+  [[nodiscard]] ExpType<void> json_array_for_each(const JsonValue& value,
+                                                  ArrayForEachFn cb);
 
-  ExpType<void> json_object_for_each(const JsonObject& object,
-                                     ObjectForEachFn cb);
-  ExpType<void> json_object_for_each(const JsonValue& value,
-                                     ObjectForEachFn cb);
+  [[nodiscard]] ExpType<void> json_object_for_each(const JsonObject& object,
+                                                   ObjectForEachFn cb);
+  [[nodiscard]] ExpType<void> json_object_for_each(const JsonValue& value,
+                                                   ObjectForEachFn cb);
 
   class JsonArray {
   private:
@@ -60,7 +62,7 @@ namespace JsonTypedefCodeGen::Data {
     Specialization::JsonArray& internal();
     const Specialization::JsonArray& internal() const;
 
-    inline ExpType<void> for_each(ArrayForEachFn cb) const {
+    [[nodiscard]] inline ExpType<void> for_each(ArrayForEachFn cb) const {
       return json_array_for_each(*this, cb);
     }
   };
@@ -92,7 +94,7 @@ namespace JsonTypedefCodeGen::Data {
     Specialization::JsonObject& internal();
     const Specialization::JsonObject& internal() const;
 
-    inline ExpType<void> for_each(ObjectForEachFn cb) const {
+    [[nodiscard]] inline ExpType<void> for_each(ObjectForEachFn cb) const {
       return json_object_for_each(*this, cb);
     }
   };
@@ -100,9 +102,8 @@ namespace JsonTypedefCodeGen::Data {
   class JsonValue {
   private:
     using AllValues =
-        std::variant<std::nullptr_t, bool, double, uint64_t, int64_t,
-                     std::string, Specialization::JsonArrayPtr,
-                     Specialization::JsonObjectPtr>;
+        std::variant<std::nullptr_t, bool, double, uint64_t, int64_t, std::string,
+                     Specialization::JsonArrayPtr, Specialization::JsonObjectPtr>;
 
     AllValues m_value{nullptr};
 
@@ -139,17 +140,17 @@ namespace JsonTypedefCodeGen::Data {
     JsonValue& operator=(JsonArray&& array);
     JsonValue& operator=(JsonObject&& object);
 
-    JsonTypes get_type() const;
-    NumberType get_number_type() const;
+    [[nodiscard]] JsonTypes get_type() const;
+    [[nodiscard]] NumberType get_number_type() const;
 
-    bool is_null() const;
-    std::optional<bool> read_bool() const;
-    std::optional<double> read_double() const;
-    std::optional<uint64_t> read_u64() const;
-    std::optional<int64_t> read_i64() const;
-    std::optional<std::string_view> read_str() const;
-    std::optional<JsonArray> read_array() const;
-    std::optional<JsonObject> read_object() const;
+    [[nodiscard]] bool is_null() const;
+    [[nodiscard]] std::optional<bool> read_bool() const;
+    [[nodiscard]] std::optional<double> read_double() const;
+    [[nodiscard]] std::optional<uint64_t> read_u64() const;
+    [[nodiscard]] std::optional<int64_t> read_i64() const;
+    [[nodiscard]] std::optional<std::string_view> read_str() const;
+    [[nodiscard]] std::optional<JsonArray> read_array() const;
+    [[nodiscard]] std::optional<JsonObject> read_object() const;
   };
 
 } // namespace JsonTypedefCodeGen::Data

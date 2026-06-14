@@ -116,7 +116,7 @@ namespace JsonTypedefCodeGen::Reader {
     JsonObjectIterator& operator=(const JsonObjectIterator&) = delete;
     JsonObjectIterator& operator=(JsonObjectIterator&&) = default;
 
-    value_type operator*() const;
+    [[nodiscard]] value_type operator*() const;
     JsonObjectIterator& operator++();
     inline void operator++(int) { ++(*this); }
 
@@ -140,11 +140,9 @@ namespace JsonTypedefCodeGen::Reader {
     JsonArray& operator=(JsonArray&&) = default;
 
     JsonArrayIterator begin() const;
-    inline std::default_sentinel_t end() const {
-      return std::default_sentinel_t{};
-    }
+    inline std::default_sentinel_t end() const { return std::default_sentinel_t{}; }
 
-    ExpType<Data::JsonArray> clone() const;
+    [[nodiscard]] ExpType<Data::JsonArray> clone() const;
   };
 
   class JsonObject {
@@ -164,11 +162,9 @@ namespace JsonTypedefCodeGen::Reader {
     JsonObject& operator=(JsonObject&&) = default;
 
     JsonObjectIterator begin() const;
-    inline std::default_sentinel_t end() const {
-      return std::default_sentinel_t{};
-    }
+    inline std::default_sentinel_t end() const { return std::default_sentinel_t{}; }
 
-    ExpType<Data::JsonObject> clone() const;
+    [[nodiscard]] ExpType<Data::JsonObject> clone() const;
   };
 
   class JsonValue {
@@ -189,16 +185,16 @@ namespace JsonTypedefCodeGen::Reader {
 
     JsonTypes get_type() const;
 
-    ExpType<bool> is_null() const;
-    ExpType<bool> read_bool() const;
-    ExpType<double> read_double() const;
-    ExpType<uint64_t> read_u64() const;
-    ExpType<int64_t> read_i64() const;
-    ExpType<std::string> read_str() const;
-    ExpType<JsonArray> read_array() const;
-    ExpType<JsonObject> read_object() const;
+    [[nodiscard]] ExpType<bool> is_null() const;
+    [[nodiscard]] ExpType<bool> read_bool() const;
+    [[nodiscard]] ExpType<double> read_double() const;
+    [[nodiscard]] ExpType<uint64_t> read_u64() const;
+    [[nodiscard]] ExpType<int64_t> read_i64() const;
+    [[nodiscard]] ExpType<std::string> read_str() const;
+    [[nodiscard]] ExpType<JsonArray> read_array() const;
+    [[nodiscard]] ExpType<JsonObject> read_object() const;
 
-    ExpType<Data::JsonValue> clone() const;
+    [[nodiscard]] ExpType<Data::JsonValue> clone() const;
   };
 
   // Iterator Utils, stop at the first error
@@ -206,12 +202,14 @@ namespace JsonTypedefCodeGen::Reader {
   using ObjectForEachFn =
       std::function<ExpType<void>(const std::string_view, const JsonValue&)>;
 
-  ExpType<void> json_array_for_each(const JsonArray& array, ArrayForEachFn cb);
-  ExpType<void> json_array_for_each(const JsonValue& value, ArrayForEachFn cb);
+  [[nodiscard]] ExpType<void> json_array_for_each(const JsonArray& array,
+                                                  ArrayForEachFn cb);
+  [[nodiscard]] ExpType<void> json_array_for_each(const JsonValue& value,
+                                                  ArrayForEachFn cb);
 
-  ExpType<void> json_object_for_each(const JsonObject& object,
-                                     ObjectForEachFn cb);
-  ExpType<void> json_object_for_each(const JsonValue& value,
-                                     ObjectForEachFn cb);
+  [[nodiscard]] ExpType<void> json_object_for_each(const JsonObject& object,
+                                                   ObjectForEachFn cb);
+  [[nodiscard]] ExpType<void> json_object_for_each(const JsonValue& value,
+                                                   ObjectForEachFn cb);
 
 } // namespace JsonTypedefCodeGen::Reader

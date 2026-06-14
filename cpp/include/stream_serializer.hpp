@@ -31,9 +31,9 @@ namespace JsonTypedefCodeGen::Writer {
     bool m_pretty = false;
     bool m_close_root_item = false;
 
-    inline Status& top() { return m_status.top(); }
-    void write_indent();
-    void end_item();
+    inline Status& top() noexcept { return m_status.top(); }
+    void write_indent() noexcept;
+    void end_item() noexcept;
 
     StreamSerializer(const StreamSerializerCreateInfo& info);
 
@@ -41,24 +41,24 @@ namespace JsonTypedefCodeGen::Writer {
     StreamSerializer() = delete;
 
     // to close the root item
-    ExpType<void> close();
+    ExpType<void> close() noexcept;
 
-    ExpType<void> write_null();
-    ExpType<void> write_bool(const bool b);
-    ExpType<void> write_double(const double d);
-    ExpType<void> write_i64(const int64_t i);
-    ExpType<void> write_u64(const uint64_t u);
-    ExpType<void> write_str(const std::string_view str);
+    ExpType<void> write_null() noexcept;
+    ExpType<void> write_bool(const bool b) noexcept;
+    ExpType<void> write_double(const double d) noexcept;
+    ExpType<void> write_i64(const int64_t i) noexcept;
+    ExpType<void> write_u64(const uint64_t u) noexcept;
+    ExpType<void> write_str(const std::string_view str) noexcept;
 
-    ExpType<void> start_object();
-    ExpType<void> write_key(const std::string_view key);
-    ExpType<void> end_object();
+    ExpType<void> start_object() noexcept;
+    ExpType<void> write_key(const std::string_view key) noexcept;
+    ExpType<void> end_object() noexcept;
 
-    ExpType<void> start_array();
-    ExpType<void> end_array();
+    ExpType<void> start_array() noexcept;
+    ExpType<void> end_array() noexcept;
 
     static ExpType<StreamSerializer>
-    create(const StreamSerializerCreateInfo& info);
+    create(const StreamSerializerCreateInfo& info) noexcept;
   };
 
   /**

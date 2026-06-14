@@ -9,8 +9,7 @@ namespace JsonTypedefCodeGen::Writer {
   namespace {
 
     constexpr UnexpJsonError no_pimpl() {
-      return make_json_error(JsonErrorTypes::Invalid,
-                             "invalid/empty Serializer"sv);
+      return make_json_error(JsonErrorTypes::Invalid, "invalid/empty Serializer"sv);
     }
 
     template <typename Type> struct OptToExp;
@@ -37,12 +36,11 @@ namespace JsonTypedefCodeGen::Writer {
     };
 
     template <typename Type>
-    constexpr ExpType<Type> opt_to_exp(std::optional<Type> opt) {
-      if (opt.has_value()) {
-        return std::move(opt.value());
+    [[nodiscard]] constexpr ExpType<Type> opt_to_exp(std::optional<Type> opt) {
+      if (opt.has_value()) [[likely]] {
+        return std::move(opt).value();
       } else {
-        return make_json_error(JsonErrorTypes::WrongType,
-                               OptToExp<Type>::error);
+        return make_json_error(JsonErrorTypes::WrongType, OptToExp<Type>::error);
       }
     }
 
@@ -50,14 +48,14 @@ namespace JsonTypedefCodeGen::Writer {
 
   namespace Specialization {
 
-    BaseSerializer::~BaseSerializer() {}
-    AbsSerializer::~AbsSerializer() {}
+    BaseSerializer::~BaseSerializer() noexcept {}
+    AbsSerializer::~AbsSerializer() noexcept {}
     Serializer BaseSerializer::create_serializer(SerializerPtr&& pimpl) {
       return Serializer(std::move(pimpl));
     }
 
     ExpType<ExpType<void>>
-    AbsSerializer::write_number(const Data::JsonValue& val) {
+    AbsSerializer::write_number(const Data::JsonValue& val) noexcept {
       switch (val.get_number_type()) {
       case NumberType::Double:
         return opt_to_exp(val.read_double()).transform([&](auto d) {
@@ -81,7 +79,7 @@ namespace JsonTypedefCodeGen::Writer {
     }
 
     ExpType<ExpType<void>>
-    AbsSerializer::write_val(const Data::JsonValue& val) {
+    AbsSerializer::write_val(const Data::JsonValue& val) noexcept {
       switch (val.get_type()) {
       case JsonTypes::Null:
         return write_null();
@@ -116,7 +114,7 @@ namespace JsonTypedefCodeGen::Writer {
     }
 
     ExpType<void> AbsSerializer::write_key_val(const std::string_view key,
-                                               const Data::JsonValue& val) {
+                                               const Data::JsonValue& val) noexcept {
       return chain_exec_void_expected(
           [&]() {
             return write_key(key);
@@ -126,7 +124,7 @@ namespace JsonTypedefCodeGen::Writer {
           });
     }
 
-    ExpType<void> AbsSerializer::write(const Data::JsonArray& arr) {
+    ExpType<void> AbsSerializer::write(const Data::JsonArray& arr) noexcept {
       auto w_item = [&](auto item) {
         return write(item);
       };
@@ -138,7 +136,7 @@ namespace JsonTypedefCodeGen::Writer {
           end_array_exec());
     }
 
-    ExpType<void> AbsSerializer::write(const Data::JsonObject& obj) {
+    ExpType<void> AbsSerializer::write(const Data::JsonObject& obj) noexcept {
       auto key_val = [&](auto key, auto val) {
         return write_key_val(key, val);
       };
@@ -150,7 +148,7 @@ namespace JsonTypedefCodeGen::Writer {
           end_object_exec());
     }
 
-    ExpType<void> AbsSerializer::write(const Data::JsonValue& val) {
+    ExpType<void> AbsSerializer::write(const Data::JsonValue& val) noexcept {
       return flatten_expected(write_val(val));
     }
 
@@ -188,8 +186,7 @@ namespace JsonTypedefCodeGen::Writer {
                                "cannot end an array as an object"sv);
 
       case States::RootObject:
-        return make_json_error(JsonErrorTypes::Invalid,
-                               "cannot end root object"sv);
+        return make_json_error(JsonErrorTypes::Invalid, "cannot end root object"sv);
 
       case States::Object:
       default:
@@ -217,8 +214,7 @@ namespace JsonTypedefCodeGen::Writer {
     ExpType<void> StateBaseSerializer::can_end_array() const {
       switch (state()) {
       case States::RootArray:
-        return make_json_error(JsonErrorTypes::Invalid,
-                               "cannot end root array"sv);
+        return make_json_error(JsonErrorTypes::Invalid, "cannot end root array"sv);
 
       case States::Array:
         return ExpType<void>();
@@ -229,7 +225,8 @@ namespace JsonTypedefCodeGen::Writer {
       }
     }
 
-    ExpType<void> StateBaseSerializer::write_key(const std::string_view key) {
+    ExpType<void>
+    StateBaseSerializer::write_key(const std::string_view key) noexcept {
       switch (state()) {
       case States::RootObject:
       case States::Object:
@@ -255,8 +252,7 @@ namespace JsonTypedefCodeGen::Writer {
 
   // ------------------------------------------
 
-  Serializer::Serializer(Spec::SerializerPtr&& pimpl)
-      : m_pimpl(std::move(pimpl)) {}
+  Serializer::Serializer(Spec::SerializerPtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
 
   DLL_PUBLIC Serializer::~Serializer() { close(); }
 

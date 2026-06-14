@@ -9,32 +9,36 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
 
   class AbsSerializer : public BaseSerializer {
   public:
-    virtual ~AbsSerializer();
+    virtual ~AbsSerializer() noexcept;
 
-    virtual ExpType<void> close() = 0;
+    [[nodiscard]] virtual ExpType<void> close() noexcept = 0;
 
-    virtual ExpType<void> write_null() = 0;
-    virtual ExpType<void> write_bool(const bool b) = 0;
-    virtual ExpType<void> write_double(const double d) = 0;
-    virtual ExpType<void> write_i64(const int64_t i) = 0;
-    virtual ExpType<void> write_u64(const uint64_t u) = 0;
-    virtual ExpType<void> write_str(const std::string_view str) = 0;
+    [[nodiscard]] virtual ExpType<void> write_null() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_bool(const bool b) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_double(const double d) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_i64(const int64_t i) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_u64(const uint64_t u) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void>
+    write_str(const std::string_view str) noexcept = 0;
 
-    virtual ExpType<void> start_object() = 0;
-    virtual ExpType<void> write_key(const std::string_view key) = 0;
-    virtual ExpType<void> end_object() = 0;
+    [[nodiscard]] virtual ExpType<void> start_object() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void>
+    write_key(const std::string_view key) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> end_object() noexcept = 0;
 
-    virtual ExpType<void> start_array() = 0;
-    virtual ExpType<void> end_array() = 0;
+    [[nodiscard]] virtual ExpType<void> start_array() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> end_array() noexcept = 0;
 
-    ExpType<ExpType<void>> write_number(const Data::JsonValue& val);
-    ExpType<ExpType<void>> write_val(const Data::JsonValue& val);
-    ExpType<void> write_key_val(const std::string_view key,
-                                const Data::JsonValue& val);
+    [[nodiscard]] ExpType<ExpType<void>>
+    write_number(const Data::JsonValue& val) noexcept;
+    [[nodiscard]] ExpType<ExpType<void>>
+    write_val(const Data::JsonValue& val) noexcept;
+    [[nodiscard]] ExpType<void> write_key_val(const std::string_view key,
+                                              const Data::JsonValue& val) noexcept;
 
-    ExpType<void> write(const Data::JsonArray& arr);
-    ExpType<void> write(const Data::JsonObject& obj);
-    ExpType<void> write(const Data::JsonValue& val);
+    [[nodiscard]] ExpType<void> write(const Data::JsonArray& arr) noexcept;
+    [[nodiscard]] ExpType<void> write(const Data::JsonObject& obj) noexcept;
+    [[nodiscard]] ExpType<void> write(const Data::JsonValue& val) noexcept;
 
     inline ExpVoidFn start_object_exec() {
       return [&]() {
@@ -84,35 +88,35 @@ namespace JsonTypedefCodeGen::Writer::Specialization {
     inline void push_key(const std::string_view key) { m_keys.emplace(key); }
     inline void pop_key() { m_keys.pop(); }
 
-    inline bool can_close() const {
-      return m_states.size() == 1 && m_keys.empty();
-    }
+    inline bool can_close() const { return m_states.size() == 1 && m_keys.empty(); }
 
-    ExpType<void> can_start_object() const;
-    ExpType<void> can_end_object() const;
-    ExpType<void> can_start_array() const;
-    ExpType<void> can_end_array() const;
+    [[nodiscard]] ExpType<void> can_start_object() const;
+    [[nodiscard]] ExpType<void> can_end_object() const;
+    [[nodiscard]] ExpType<void> can_start_array() const;
+    [[nodiscard]] ExpType<void> can_end_array() const;
 
   public:
     StateBaseSerializer() = delete;
     StateBaseSerializer(const States init_state);
     virtual ~StateBaseSerializer();
 
-    virtual ExpType<void> close() = 0;
+    [[nodiscard]] virtual ExpType<void> close() noexcept = 0;
 
-    virtual ExpType<void> write_null() = 0;
-    virtual ExpType<void> write_bool(const bool b) = 0;
-    virtual ExpType<void> write_double(const double d) = 0;
-    virtual ExpType<void> write_i64(const int64_t i) = 0;
-    virtual ExpType<void> write_u64(const uint64_t u) = 0;
-    virtual ExpType<void> write_str(const std::string_view str) = 0;
+    [[nodiscard]] virtual ExpType<void> write_null() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_bool(const bool b) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_double(const double d) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_i64(const int64_t i) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> write_u64(const uint64_t u) noexcept = 0;
+    [[nodiscard]] virtual ExpType<void>
+    write_str(const std::string_view str) noexcept = 0;
 
-    virtual ExpType<void> start_object() = 0;
-    virtual ExpType<void> write_key(const std::string_view key) final;
-    virtual ExpType<void> end_object() = 0;
+    [[nodiscard]] virtual ExpType<void> start_object() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void>
+    write_key(const std::string_view key) noexcept final;
+    [[nodiscard]] virtual ExpType<void> end_object() noexcept = 0;
 
-    virtual ExpType<void> start_array() = 0;
-    virtual ExpType<void> end_array() = 0;
+    [[nodiscard]] virtual ExpType<void> start_array() noexcept = 0;
+    [[nodiscard]] virtual ExpType<void> end_array() noexcept = 0;
   };
 
 } // namespace JsonTypedefCodeGen::Writer::Specialization

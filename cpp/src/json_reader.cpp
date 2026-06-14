@@ -18,8 +18,7 @@ namespace JsonTypedefCodeGen::Reader {
     // - - -
     BaseObjectIterator::~BaseObjectIterator() {}
     ObjectIterator::~ObjectIterator() {}
-    JsonObjectIterator
-    BaseObjectIterator::create_json(ObjectIteratorPtr&& pimpl) {
+    JsonObjectIterator BaseObjectIterator::create_json(ObjectIteratorPtr&& pimpl) {
       return JsonObjectIterator(std::move(pimpl));
     }
 
@@ -44,7 +43,7 @@ namespace JsonTypedefCodeGen::Reader {
       return JsonValue(std::move(pimpl));
     }
 
-    static ExpType<Data::JsonValue> clone_number(const Value* val) {
+    [[nodiscard]] static ExpType<Data::JsonValue> clone_number(const Value* val) {
       constexpr auto conv = [](auto v) {
         return Data::JsonValue(v);
       };
@@ -99,8 +98,7 @@ namespace JsonTypedefCodeGen::Reader {
   JsonArrayIterator::JsonArrayIterator(Spec::ArrayIteratorPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
-  DLL_PUBLIC JsonArrayIterator::value_type
-  JsonArrayIterator::operator*() const {
+  DLL_PUBLIC JsonArrayIterator::value_type JsonArrayIterator::operator*() const {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
@@ -123,8 +121,7 @@ namespace JsonTypedefCodeGen::Reader {
   JsonObjectIterator::JsonObjectIterator(Spec::ObjectIteratorPtr&& pimpl)
       : m_pimpl(std::move(pimpl)) {}
 
-  DLL_PUBLIC JsonObjectIterator::value_type
-  JsonObjectIterator::operator*() const {
+  DLL_PUBLIC JsonObjectIterator::value_type JsonObjectIterator::operator*() const {
     if (m_pimpl) {
       return Spec::unbase(m_pimpl)->get();
     }
@@ -138,8 +135,7 @@ namespace JsonTypedefCodeGen::Reader {
     return *this;
   }
 
-  DLL_PUBLIC bool
-  JsonObjectIterator::operator==(std::default_sentinel_t) const {
+  DLL_PUBLIC bool JsonObjectIterator::operator==(std::default_sentinel_t) const {
     return !m_pimpl || Spec::unbase(m_pimpl)->done();
   }
 
@@ -156,14 +152,11 @@ namespace JsonTypedefCodeGen::Reader {
     auto& result = _result.internal();
     for (const auto& item : *this) {
       if (!item.has_value()) [[unlikely]] {
-        return std::unexpected(item.error());
+        return UnexpJsonError(item.error());
       }
 
-      if (const auto tmp = item.value().clone(); tmp.has_value()) [[likely]] {
-        result.emplace_back(std::move(tmp.value()));
-      } else {
-        return std::unexpected(tmp.error());
-      }
+      TRY_ASSIGN(auto val, item.value().clone());
+      result.emplace_back(val);
     }
     return _result;
   }
@@ -180,18 +173,18 @@ namespace JsonTypedefCodeGen::Reader {
     auto& result = _result.internal();
     for (const auto& item : *this) {
       if (!item.has_value()) [[unlikely]] {
-        return std::unexpected(item.error());
+        return UnexpJsonError(item.error());
       }
 
       const auto& [key, val] = item.value();
       if (const auto tmp = val.clone(); tmp.has_value()) [[likely]] {
-        const auto [it, ok] = result.insert({key, tmp.value()});
+        const auto [_, ok] = result.insert({key, tmp.value()});
         if (!ok) {
           const auto err = format("Duplicated key {}", key);
           return make_json_error(JsonErrorTypes::String, err);
         }
       } else {
-        return std::unexpected(item.error());
+        return UnexpJsonError(item.error());
       }
     }
     return _result;
@@ -199,8 +192,7 @@ namespace JsonTypedefCodeGen::Reader {
 
   // ------------------------------------------
   static UnexpJsonError no_pimpl() {
-    return make_json_error(JsonErrorTypes::Invalid,
-                           "invalid/empty JsonValue"sv);
+    return make_json_error(JsonErrorTypes::Invalid, "invalid/empty JsonValue"sv);
   }
 
   JsonValue::JsonValue(Spec::ValuePtr&& pimpl) : m_pimpl(std::move(pimpl)) {}
@@ -253,19 +245,13 @@ namespace JsonTypedefCodeGen::Reader {
       return read_str().transform(conv);
 
     case JsonTypes::Array: {
-      if (auto tmp = read_array(); tmp.has_value()) {
-        return tmp.value().clone().transform(conv);
-      } else {
-        return std::unexpected(tmp.error());
-      }
+      TRY_ASSIGN(auto arr, read_array());
+      return arr.clone().transform(conv);
     } break;
 
     case JsonTypes::Object: {
-      if (auto tmp = read_object(); tmp.has_value()) {
-        return tmp.value().clone().transform(conv);
-      } else {
-        return std::unexpected(tmp.error());
-      }
+      TRY_ASSIGN(auto obj, read_object());
+      return obj.clone().transform(conv);
     } break;
 
     default:
@@ -277,19 +263,16 @@ namespace JsonTypedefCodeGen::Reader {
   DLL_PUBLIC ExpType<void> json_array_for_each(const JsonArray& array,
                                                ArrayForEachFn cb) {
     for (auto item : array) {
-      if (auto exp = flatten_expected(item.transform(cb)); !exp.has_value()) {
-        return UnexpJsonError(exp.error());
-      }
+      TRY_VOID(flatten_expected(item.transform(cb)));
     }
     return ExpType<void>();
   }
 
   DLL_PUBLIC ExpType<void> json_array_for_each(const JsonValue& value,
                                                ArrayForEachFn cb) {
-    return flatten_expected(
-        value.read_array().transform([&cb](const auto& array) {
-          return json_array_for_each(array, cb);
-        }));
+    return flatten_expected(value.read_array().transform([&cb](const auto& array) {
+      return json_array_for_each(array, cb);
+    }));
   }
 
   DLL_PUBLIC ExpType<void> json_object_for_each(const JsonObject& object,
@@ -299,19 +282,16 @@ namespace JsonTypedefCodeGen::Reader {
         const auto [key, val] = std::move(pair);
         return cb(key, val);
       }));
-      if (!exp.has_value()) {
-        return UnexpJsonError(exp.error());
-      }
+      TRY_VOID(exp);
     }
     return ExpType<void>();
   }
 
   DLL_PUBLIC ExpType<void> json_object_for_each(const JsonValue& value,
                                                 ObjectForEachFn cb) {
-    return flatten_expected(
-        value.read_object().transform([&cb](const auto& object) {
-          return json_object_for_each(object, cb);
-        }));
+    return flatten_expected(value.read_object().transform([&cb](const auto& object) {
+      return json_object_for_each(object, cb);
+    }));
   }
 
 } // namespace JsonTypedefCodeGen::Reader

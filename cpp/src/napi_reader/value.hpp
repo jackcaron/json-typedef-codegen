@@ -7,7 +7,7 @@
 using namespace JsonTypedefCodeGen;
 using namespace JsonTypedefCodeGen::Reader;
 
-class NapiValue : public Specialization::Value {
+class NapiValue final : public Specialization::Value {
 private:
   Napi::Value m_value;
 
@@ -35,4 +35,4 @@ public:
 // -------------------------------------------
 
 // -------------------------------------------
-UnexpJsonError make_json_error(const napi_status err_type);
+[[nodiscard]] UnexpJsonError make_json_error(const napi_status err_type);

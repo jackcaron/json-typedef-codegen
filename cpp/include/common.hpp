@@ -55,8 +55,8 @@ namespace JsonTypedefCodeGen {
     constexpr JsonError& operator=(JsonError&&) = default;
   };
 
-  template <typename Type> using ExpType = std::expected<Type, JsonError>;
   using UnexpJsonError = std::unexpected<JsonError>;
+  template <typename Type> using ExpType = std::expected<Type, JsonError>;
 
   constexpr UnexpJsonError make_json_error(const JsonErrorTypes type) {
     return UnexpJsonError(std::in_place_t{}, type);
@@ -66,23 +66,45 @@ namespace JsonTypedefCodeGen {
     return UnexpJsonError(std::in_place_t{}, type, message);
   }
 
+  // Portable try-like macros for ExpType<T> (avoid GCC extensions)
+  // Usage:
+  //   TRY_ASSIGN(val, some_function()); // declares `val` with the inner value
+  //   TRY_VOID(some_void_function());    // returns early on error for void flows
+
+#define PP_CONCAT_IMPL(a, b) a##b
+#define PP_CONCAT(a, b) PP_CONCAT_IMPL(a, b)
+
+#define TRY_ASSIGN(var, expr)                                                       \
+  auto PP_CONCAT(_expected_tmp_, __LINE__) = (expr);                                \
+  if (!PP_CONCAT(_expected_tmp_, __LINE__).has_value()) [[unlikely]] {              \
+    return JsonTypedefCodeGen::UnexpJsonError(                                      \
+        PP_CONCAT(_expected_tmp_, __LINE__).error());                               \
+  }                                                                                 \
+  var = std::move(PP_CONCAT(_expected_tmp_, __LINE__)).value();
+
+#define TRY_VOID(expr)                                                              \
+  if (auto _expected_tmp_ = (expr); !_expected_tmp_.has_value()) [[unlikely]] {     \
+    return JsonTypedefCodeGen::UnexpJsonError(std::move(_expected_tmp_).error());   \
+  }
+
   template <typename Type> using JsonMap = std::map<std::string, Type>;
 
   // Expected Utils
   template <typename ResType>
-  constexpr ExpType<ResType> flatten_expected(ResType&& value) {
+  [[nodiscard]] constexpr ExpType<ResType> flatten_expected(ResType&& value) {
     return ExpType<ResType>(std::move(value));
   }
 
   template <typename ResType>
-  constexpr ExpType<ResType> flatten_expected(ExpType<ResType>&& value) {
+  [[nodiscard]] constexpr ExpType<ResType>
+  flatten_expected(ExpType<ResType>&& value) {
     return value;
   }
 
   template <typename ResType>
-  constexpr ExpType<ResType>
+  [[nodiscard]] constexpr ExpType<ResType>
   flatten_expected(ExpType<ExpType<ResType>>&& value) {
-    if (!value.has_value()) {
+    if (!value.has_value()) [[unlikely]] {
       return UnexpJsonError(value.error());
     }
 
@@ -97,22 +119,23 @@ namespace JsonTypedefCodeGen {
     }
   }
 
-  constexpr ExpType<void> chain_void_expected(ExpType<void> last) {
+  [[nodiscard]] constexpr ExpType<void> chain_void_expected(ExpType<void> last) {
     return last;
   }
 
   template <typename... Xp>
-  constexpr ExpType<void> chain_void_expected(ExpType<void> first, Xp... etc) {
-    if (first.has_value()) {
+  [[nodiscard]] constexpr ExpType<void> chain_void_expected(ExpType<void> first,
+                                                            Xp... etc) {
+    if (first.has_value()) [[likely]] {
       return chain_void_expected(etc...);
     }
     return first;
   }
 
-  constexpr ExpType<void>
+  [[nodiscard]] constexpr ExpType<void>
   chain_void_expected(std::initializer_list<ExpType<void>> list) {
     for (auto& item : list) {
-      if (!item.has_value()) {
+      if (!item.has_value()) [[unlikely]] {
         return item;
       }
     }
@@ -120,15 +143,14 @@ namespace JsonTypedefCodeGen {
   }
 
   using ExpVoidFn = std::function<ExpType<void>()>;
-  constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn fn) {
+  [[nodiscard]] constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn fn) {
     return fn();
   }
 
   template <typename... Xp>
-  constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn first, Xp... etc) {
-    if (auto exp = first(); !exp.has_value()) {
-      return exp;
-    }
+  [[nodiscard]] constexpr ExpType<void> chain_exec_void_expected(ExpVoidFn first,
+                                                                 Xp... etc) {
+    TRY_VOID(first());
     return chain_exec_void_expected(etc...);
   }
 

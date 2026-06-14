@@ -10,7 +10,7 @@
 
 namespace JsonTypedefCodeGen::Reader {
 
-  ExpType<JsonValue> napi_root_value(const Napi::Value root);
+  [[nodiscard]] ExpType<JsonValue> napi_root_value(const Napi::Value root);
 
 } // namespace JsonTypedefCodeGen::Reader
 
@@ -25,7 +25,7 @@ namespace JsonTypedefCodeGen::Writer {
   /**
    * root: object or array to populate
    */
-  ExpType<Serializer> napi_serializer(Napi::Value& root);
+  [[nodiscard]] ExpType<Serializer> napi_serializer(Napi::Value& root);
 
 } // namespace JsonTypedefCodeGen::Writer
 

@@ -10,7 +10,7 @@
 
 namespace JsonTypedefCodeGen::Reader {
 
-  ExpType<JsonValue> nlohmann_root_value(const nlohmann::json root);
+  [[nodiscard]] ExpType<JsonValue> nlohmann_root_value(const nlohmann::json root);
 
 }
 
@@ -25,7 +25,7 @@ namespace JsonTypedefCodeGen::Writer {
   /**
    * root: object or array to populate
    */
-  ExpType<Serializer> nlohmann_serializer(nlohmann::json& root);
+  [[nodiscard]] ExpType<Serializer> nlohmann_serializer(nlohmann::json& root);
 
 } // namespace JsonTypedefCodeGen::Writer
 

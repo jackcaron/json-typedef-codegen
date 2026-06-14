@@ -37,10 +37,10 @@ namespace {
     ExpType<void> catch_push(NJson& obj, NJson& last_js) noexcept {
       try {
         obj.push_back(std::move(last_js));
-      } catch (const std::bad_alloc& ba) {
-        return create_nloh_error(ba.what());
-      } catch (const nlohmann::detail::type_error& e) {
+      } catch (const std::exception& e) {
         return create_nloh_error(e.what());
+      } catch (...) {
+        return create_nloh_error("unknown error");
       }
       return ExpType<void>();
     }
@@ -87,7 +87,7 @@ namespace {
         : StateBaseSerializer(get_root_state(root)), m_root(root) {}
     ~NlohSerializer() {}
 
-    virtual ExpType<void> close() override {
+    virtual ExpType<void> close() noexcept override {
       if (can_close() && m_jsons.empty()) {
         return ExpType<void>();
       }
@@ -96,51 +96,51 @@ namespace {
           "Serializer still have pending operations to complete"sv);
     }
 
-    virtual ExpType<void> write_null() override {
+    virtual ExpType<void> write_null() noexcept override {
       push_json(NJson(nullptr));
       return end_item();
     }
-    virtual ExpType<void> write_bool(const bool b) override {
+    virtual ExpType<void> write_bool(const bool b) noexcept override {
       push_json(NJson(b));
       return end_item();
     }
-    virtual ExpType<void> write_double(const double d) override {
+    virtual ExpType<void> write_double(const double d) noexcept override {
       push_json(NJson(d));
       return end_item();
     }
-    virtual ExpType<void> write_i64(const int64_t i) override {
+    virtual ExpType<void> write_i64(const int64_t i) noexcept override {
       push_json(NJson(i));
       return end_item();
     }
-    virtual ExpType<void> write_u64(const uint64_t u) override {
+    virtual ExpType<void> write_u64(const uint64_t u) noexcept override {
       push_json(NJson(u));
       return end_item();
     }
-    virtual ExpType<void> write_str(const std::string_view str) override {
+    virtual ExpType<void> write_str(const std::string_view str) noexcept override {
       push_json(NJson(str));
       return end_item();
     }
 
-    virtual ExpType<void> start_object() override {
+    virtual ExpType<void> start_object() noexcept override {
       return can_start_object().transform([&]() -> void {
         push_state(States::Object);
         push_json(NJson::object());
       });
     }
-    virtual ExpType<void> end_object() override {
+    virtual ExpType<void> end_object() noexcept override {
       return flatten_expected(can_end_object().transform([&]() -> ExpType<void> {
         pop_state();
         return end_item();
       }));
     }
 
-    virtual ExpType<void> start_array() override {
+    virtual ExpType<void> start_array() noexcept override {
       return can_start_array().transform([&]() -> void {
         push_state(States::Array);
         push_json(NJson::array());
       });
     }
-    virtual ExpType<void> end_array() override {
+    virtual ExpType<void> end_array() noexcept override {
       return flatten_expected(can_end_array().transform([&]() -> ExpType<void> {
         pop_state(); // move out of the array
         return end_item();
